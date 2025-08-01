@@ -9,6 +9,9 @@
 # Ignore project build output directory
 build/
 
+# Ignore Gradle wrapper files
+gradle/
+
 # Ignore all Swagger UI assets except index.html
 /src/main/resources/swagger-ui/*
 !/src/main/resources/swagger-ui/index.html
