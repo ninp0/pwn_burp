@@ -77,13 +77,14 @@
 │       └── shadowJar
 │           └── MANIFEST.MF
 ├── build.gradle
-├── build.sh
+├── git_commit.sh
 ├── gradle
 │   └── wrapper
 │       ├── gradle-wrapper.jar
 │       └── gradle-wrapper.properties
 ├── gradlew
 ├── gradlew.bat
+├── install.sh
 ├── README.md
 ├── src
 │   └── main
@@ -144,4 +145,4 @@
 │               └── swagger-ui-standalone-preset.js
 └── STRUCTURE.md
 
-44 directories, 101 files
+44 directories, 102 files
