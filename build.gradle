@@ -1,0 +1,111 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'com.pwn_burp'
+version = '0.0.001'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'net.portswigger.burp.extensions:montoya-api:+'
+    implementation files('/opt/burpsuite/burpsuite-pro.jar')
+    implementation 'io.javalin:javalin:+'
+    implementation 'io.javalin.community.openapi:javalin-openapi-plugin:+'
+    implementation 'io.javalin.community.openapi:javalin-swagger-plugin:+'
+    implementation 'com.google.code.gson:gson:+'
+    implementation 'org.slf4j:slf4j-api:+'
+    implementation 'org.webjars:swagger-ui:+'
+    annotationProcessor 'io.javalin.community.openapi:openapi-annotation-processor:+'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xlint:deprecation'
+}
+
+tasks.withType(Jar) {
+    manifest {
+        attributes 'Main-Class': 'com.pwn_burp.PwnBurp'
+    }
+}
+
+tasks.shadowJar {
+    archiveFileName = 'pwn-burp.jar'
+}
+
+tasks.processResources {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    from('src/main/resources') {
+        include '**/*'
+        into ''
+    }
+}
+
+// Task to extract Swagger UI assets from WebJar to src/main/resources/swagger-ui
+task copySwaggerUiAssets(type: Copy) {
+    description 'Copy Swagger UI assets from WebJar to src/main/resources/swagger-ui'
+    group 'build'
+
+    // Find the swagger-ui WebJar file
+    from configurations.runtimeClasspath.findAll { it.name.contains('swagger-ui') }.collect { zipTree(it) }
+    // Only include necessary Swagger UI assets
+    include 'META-INF/resources/webjars/swagger-ui/**/*.js'
+    include 'META-INF/resources/webjars/swagger-ui/**/*.css'
+    // Output swaggeer-ui to src/main/resources/
+    into "${projectDir}/src/main/resources/"
+    // Strip the WebJar version path to simplify access
+    eachFile { file ->
+        // Adjust the path to remove version-specific directory
+        def versionPath = file.path.replaceFirst(
+          'META-INF/resources/webjars/swagger-ui/[^/]+/',
+          'swagger-ui/'
+        )
+        file.path = versionPath
+    }
+    // remove src/main/resources/META-INF if it exists
+    doLast {
+	def metaInfDir = file("${projectDir}/src/main/resources/META-INF")
+	if (metaInfDir.exists()) {
+	    metaInfDir.deleteDir()
+	}
+    }
+}
+
+// Make processResources depend on copySwaggerUiAssets to ensure assets are copied before packaging
+processResources.dependsOn copySwaggerUiAssets
+
+// Clean up the project by removing Swagger UI assets, .gradle, & build
+clean {
+    // Remove all Swagger UI assets from the resources directory
+    // except index.html
+    def swaggerUiDir = file("${projectDir}/src/main/resources/swagger-ui")
+    if (swaggerUiDir.exists()) {
+        swaggerUiDir.eachFile { file ->
+            if (file.name != 'index.html') {
+                file.delete()
+            }
+        }
+    }
+
+    // Delete .gradle
+    def gradleDir = file("${projectDir}/.gradle")
+    if (gradleDir.exists()) {
+        gradleDir.deleteDir()
+    }
+
+    // Delete build
+    def buildDir = file("${projectDir}/build")
+    if (buildDir.exists()) {
+        buildDir.deleteDir()
+    }
+}

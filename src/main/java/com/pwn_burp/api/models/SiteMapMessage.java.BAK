@@ -1,0 +1,176 @@
+package com.pwn_burp.api.models;
+
+import com.google.gson.annotations.SerializedName;
+import java.util.Objects;
+
+public class SiteMapMessage {
+    @SerializedName("request")
+    private final Request request;
+
+    @SerializedName("response")
+    private final String response; // Base64-encoded HTTP response
+
+    @SerializedName("highlight")
+    private String highlight;
+
+    @SerializedName("comment")
+    private String comment;
+
+    @SerializedName("http_service")
+    private final HttpService httpService;
+
+    public SiteMapMessage(Request request, String response, String highlight, String comment, HttpService httpService) {
+        this.request = request;
+        this.response = response;
+        this.highlight = highlight;
+        this.comment = comment;
+        this.httpService = httpService;
+    }
+
+    public Request getRequest() {
+        return request;
+    }
+
+    public String getResponse() {
+        return response;
+    }
+
+    public String getHighlight() {
+        return highlight;
+    }
+
+    public void setHighlight(String highlight) {
+        this.highlight = highlight;
+    }
+
+    public String getComment() {
+        return comment;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
+    }
+
+    public HttpService getHttpService() {
+        return httpService;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        SiteMapMessage that = (SiteMapMessage) o;
+        return Objects.equals(request, that.request) &&
+               Objects.equals(response, that.response) &&
+               Objects.equals(highlight, that.highlight) &&
+               Objects.equals(comment, that.comment) &&
+               Objects.equals(httpService, that.httpService);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(request, response, highlight, comment, httpService);
+    }
+
+    @Override
+    public String toString() {
+        return "SiteMapMessage{" +
+               "request=" + request +
+               ", response='" + response + '\'' +
+               ", highlight='" + highlight + '\'' +
+               ", comment='" + comment + '\'' +
+               ", httpService=" + httpService +
+               '}';
+    }
+
+    // Nested Request class for request object
+    public static class Request {
+        @SerializedName("raw")
+        private final String raw;
+
+        @SerializedName("path")
+        private final String path;
+
+        public Request(String raw, String path) {
+            this.raw = raw;
+            this.path = path;
+        }
+
+        public String getRaw() {
+            return raw;
+        }
+
+        public String getPath() {
+            return path;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Request that = (Request) o;
+            return Objects.equals(raw, that.raw) &&
+                   Objects.equals(path, that.path);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(raw, path);
+        }
+
+        @Override
+        public String toString() {
+            return "Request{raw='" + raw + "', path='" + path + "'}";
+        }
+    }
+
+    // Nested HttpService class for http_service object
+    public static class HttpService {
+        @SerializedName("host")
+        private final String host;
+
+        @SerializedName("port")
+        private final int port;
+
+        @SerializedName("protocol")
+        private final String protocol;
+
+        public HttpService(String host, int port, String protocol) {
+            this.host = host;
+            this.port = port;
+            this.protocol = protocol;
+        }
+
+        public String getHost() {
+            return host;
+        }
+
+        public int getPort() {
+            return port;
+        }
+
+        public String getProtocol() {
+            return protocol;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            HttpService that = (HttpService) o;
+            return port == that.port &&
+                   Objects.equals(host, that.host) &&
+                   Objects.equals(protocol, that.protocol);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(host, port, protocol);
+        }
+
+        @Override
+        public String toString() {
+            return "HttpService{host='" + host + "', port=" + port + ", protocol='" + protocol + "'}";
+        }
+    }
+}

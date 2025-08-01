@@ -1,0 +1,14 @@
+*.swp
+**/screenlog.*
+.DS_Store
+
+
+# Ignore Gradle build directory
+.gradle/
+
+# Ignore project build output directory
+build/
+
+# Ignore all Swagger UI assets except index.html
+/src/main/resources/swagger-ui/*
+!/src/main/resources/swagger-ui/index.html
