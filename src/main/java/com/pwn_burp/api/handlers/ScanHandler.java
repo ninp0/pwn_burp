@@ -4,13 +4,10 @@ import com.google.gson.*;
 import com.pwn_burp.burp.*;
 import com.pwn_burp.api.models.*;
 import io.javalin.Javalin;
-import io.javalin.http.Context;
+import io.javalin.http.*;
 import io.javalin.openapi.*;
+import java.net.*;
 import java.util.Base64;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.MalformedURLException;
 
 public class ScanHandler {
     private final PwnService pwnService;
@@ -95,6 +92,7 @@ public class ScanHandler {
             @OpenApiResponse(status = "400", description = "Invalid request", content = {@OpenApiContent(from = ApiResponse.class)})
         }
     )
+
     private void startActiveScan(Context ctx) {
         try {
             ScanMessage scanMSG = gson.fromJson(ctx.body(), ScanMessage.class);
@@ -322,9 +320,7 @@ public class ScanHandler {
             }
             pwnService.getLogging().logToOutput("Spidering started for URL: " + urlMsg.url + " with ID: " + id);
             ctx.status(201);
-            JsonObject response = new JsonObject();
-            response.addProperty("id", id);
-            ctx.json(response);
+            ctx.json(new ApiResponse("id", id));
         } catch (IllegalArgumentException e) {
             ctx.status(400);
             ctx.json(pwnService.apiError("error", e.getMessage()));

@@ -1,14 +1,12 @@
 package com.pwn_burp.api.handlers;
 
-import com.google.gson.Gson;
+import com.google.gson.*;
 import com.pwn_burp.burp.*;
 import com.pwn_burp.api.models.*;
 import io.javalin.Javalin;
-import io.javalin.http.Context;
+import io.javalin.http.*;
 import io.javalin.openapi.*;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URL;
+import java.net.*;
 import java.util.Base64;
 
 public class ScopeHandler {
