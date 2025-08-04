@@ -322,7 +322,9 @@ public class ScanHandler {
             }
             pwnService.getLogging().logToOutput("Spidering started for URL: " + urlMsg.url + " with ID: " + id);
             ctx.status(201);
-            ctx.json(new ApiResponse("id", id));
+            JsonObject response = new JsonObject();
+            response.addProperty("id", id);
+            ctx.json(response);
         } catch (IllegalArgumentException e) {
             ctx.status(400);
             ctx.json(pwnService.apiError("error", e.getMessage()));
