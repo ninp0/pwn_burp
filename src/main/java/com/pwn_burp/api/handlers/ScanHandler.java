@@ -109,7 +109,7 @@ public class ScanHandler {
             ctx.status(201);
             ctx.json(new ApiResponse("id", id));
         } catch (IllegalArgumentException e) {
-            ctx.status(200);
+            ctx.status(400);
             ctx.json(pwnService.apiError("error", e.getMessage()));
         }
     }

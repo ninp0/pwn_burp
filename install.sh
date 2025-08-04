@@ -20,7 +20,7 @@ fi
 # Build the project
 cd "$burp_ext_root" && \
   ./gradlew clean build shadowJar && \
-  tree . > STRUCTURE.md && \
+  tree . > STRUCTURE.txt && \
   sudo cp ${build_libs}/pwn-burp.jar $burp_root/pwn-burp.jar && \
   if [[ -d "${pwn_burp_backup}" ]]; then sudo rm -rf "${pwn_burp_backup}"; fi && \
   sudo cp -a "${burp_ext_root}" "${pwn_burp_backup}"
