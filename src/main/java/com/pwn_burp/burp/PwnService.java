@@ -83,7 +83,7 @@ public class PwnService {
         proxyService.setProxyInterceptionEnabled(enabled);
     }
 
-    public List<IProxyListener> getProxyListeners() {
+    public List<ProxyListener> getProxyListeners() {
         return proxyService.getProxyListeners();
     }
 

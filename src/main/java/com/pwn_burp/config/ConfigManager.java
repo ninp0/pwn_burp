@@ -8,6 +8,8 @@ public class ConfigManager {
     private final Logging logging;
     private String serverAddress = "127.0.0.1";
     private int serverPort = 1337;
+    private String proxyAddress = "127.0.0.1";
+    private int proxyPort = 8080;
 
     public ConfigManager(Logging logging) {
         this.logging = logging;
@@ -20,17 +22,27 @@ public class ConfigManager {
             props.load(ConfigManager.class.getResourceAsStream("/config.properties"));
             serverAddress = props.getProperty("server.address", serverAddress);
             serverPort = Integer.parseInt(props.getProperty("server.port", String.valueOf(serverPort)));
+            proxyAddress = props.getProperty("proxy.address", proxyAddress);
+            proxyPort = Integer.parseInt(props.getProperty("proxy.port", String.valueOf(proxyPort)));
         } catch (IOException | NumberFormatException e) {
             logging.logToError("Failed to load config: " + e.getMessage());
         }
 
         // Override with system properties if provided
         serverAddress = System.getProperty("server.address", serverAddress);
-        String portStr = System.getProperty("server.port", String.valueOf(serverPort));
+        String sPortStr = System.getProperty("server.port", String.valueOf(serverPort));
         try {
-            serverPort = Integer.parseInt(portStr);
+            serverPort = Integer.parseInt(sPortStr);
         } catch (NumberFormatException e) {
-            logging.logToError("Invalid server.port system property: " + portStr);
+            logging.logToError("Invalid server.port system property: " + sPortStr);
+        }
+
+        proxyAddress = System.getProperty("proxy.address", proxyAddress);
+        String pPortStr = System.getProperty("proxy.port", String.valueOf(proxyPort));
+        try {
+            proxyPort = Integer.parseInt(pPortStr);
+        } catch (NumberFormatException e) {
+            logging.logToError("Invalid proxy.port system property: " + pPortStr);
         }
     }
 
@@ -40,5 +52,13 @@ public class ConfigManager {
 
     public int getServerPort() {
         return serverPort;
+    }
+
+    public String getProxyAddress() {
+        return serverAddress;
+    }
+
+    public int getProxyPort() {
+        return proxyPort;
     }
 }
