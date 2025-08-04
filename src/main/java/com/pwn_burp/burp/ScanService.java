@@ -29,6 +29,12 @@ public class ScanService {
     private final Map<Integer, Integer> lastRequestCounts = new ConcurrentHashMap<>();
     private final Map<Integer, Long> lastRequestUpdateTimes = new ConcurrentHashMap<>();
     private final AtomicInteger scanIdCounter = new AtomicInteger(0);
+    private final AtomicInteger crawlIdCounter = new AtomicInteger(0);
+    private final Map<Integer, Crawl> crawlMap = new ConcurrentHashMap<>();
+    private final Map<Integer, Long> crawlStartTimes = new ConcurrentHashMap<>();
+    private final Map<Integer, String> crawlStatuses = new ConcurrentHashMap<>();
+    private final Map<Integer, Integer> lastCrawlRequestCounts = new ConcurrentHashMap<>();
+    private final Map<Integer, Long> lastCrawlRequestUpdateTimes = new ConcurrentHashMap<>();
 
     // Inner class to store IScanQueueItem and host metadata
     private static class ScanEntry {
@@ -297,5 +303,111 @@ public class ScanService {
             api.logging().logToError("Report generation failed for host " + host + ": " + e.getMessage(), e);
             return "{\"error\":\"Report generation failed: " + e.getMessage() + "\"}";
         }
+    }
+
+    public int doCrawl(String url) {
+        try {
+            URL parsedUrl = new URL(url);
+            if (!scopeService.isInScope(parsedUrl)) {
+                api.logging().logToError("Target out of scope: " + url);
+                return -1;
+            }
+            CrawlConfiguration config = CrawlConfiguration.crawlConfiguration(url);
+            Crawl crawl = api.scanner().startCrawl(config);
+            int id = crawlIdCounter.incrementAndGet();
+            crawlMap.put(id, crawl);
+            crawlStartTimes.put(id, System.currentTimeMillis());
+            crawlStatuses.put(id, "queued");
+            lastCrawlRequestCounts.put(id, 0);
+            lastCrawlRequestUpdateTimes.put(id, System.currentTimeMillis());
+            return id;
+        } catch (Exception e) {
+            api.logging().logToError("Crawl failed: " + e.getMessage());
+            throw new RuntimeException("Failed to perform crawl", e);
+        }
+    }
+
+    public String getCrawlStatus() {
+        JsonArray items = new JsonArray();
+        crawlMap.forEach((id, crawl) -> {
+            JsonObject obj = new JsonObject();
+            obj.addProperty("id", id);
+            int requestCount = crawl.requestCount();
+            int errorCount = crawl.errorCount();
+            String status = crawlStatuses.getOrDefault(id, "queued");
+            Long startTime = crawlStartTimes.get(id);
+            int oldRequestCount = lastCrawlRequestCounts.getOrDefault(id, 0);
+            long lastUpdateTime = lastCrawlRequestUpdateTimes.getOrDefault(id, 0L);
+            if (startTime != null) {
+                long elapsed = System.currentTimeMillis() - startTime;
+                if (requestCount != oldRequestCount) {
+                    lastCrawlRequestCounts.put(id, requestCount);
+                    lastCrawlRequestUpdateTimes.put(id, System.currentTimeMillis());
+                    lastUpdateTime = System.currentTimeMillis();
+                }
+                long idleTime = System.currentTimeMillis() - lastUpdateTime;
+                if (idleTime > 30000 && requestCount > 0) {
+                    status = "finished";
+                } else if (elapsed > 60000 && requestCount == 0) {
+                    status = "failed";
+                } else {
+                    status = "running";
+                }
+                crawlStatuses.put(id, status);
+            }
+            obj.addProperty("request_count", requestCount);
+            obj.addProperty("error_count", errorCount);
+            obj.addProperty("status", status);
+            items.add(obj);
+        });
+        return items.toString();
+    }
+
+    public String getCrawlById(int id) {
+        Crawl crawl = crawlMap.get(id);
+        if (crawl == null) {
+            return "{\"status\":\"not_found\"}";
+        }
+        JsonObject obj = new JsonObject();
+        int requestCount = crawl.requestCount();
+        int errorCount = crawl.errorCount();
+        String status = crawlStatuses.getOrDefault(id, "queued");
+        Long startTime = crawlStartTimes.get(id);
+        int oldRequestCount = lastCrawlRequestCounts.getOrDefault(id, 0);
+        long lastUpdateTime = lastCrawlRequestUpdateTimes.getOrDefault(id, 0L);
+        if (startTime != null) {
+            long elapsed = System.currentTimeMillis() - startTime;
+            if (requestCount != oldRequestCount) {
+                lastCrawlRequestCounts.put(id, requestCount);
+                lastCrawlRequestUpdateTimes.put(id, System.currentTimeMillis());
+                lastUpdateTime = System.currentTimeMillis();
+            }
+            long idleTime = System.currentTimeMillis() - lastUpdateTime;
+            if (idleTime > 30000 && requestCount > 0) {
+                status = "finished";
+            } else if (elapsed > 60000 && requestCount == 0) {
+                status = "failed";
+            } else {
+                status = "running";
+            }
+            crawlStatuses.put(id, status);
+        }
+        obj.addProperty("request_count", requestCount);
+        obj.addProperty("error_count", errorCount);
+        obj.addProperty("status", status);
+        return obj.toString();
+    }
+
+    public boolean cancelCrawl(int id) {
+        Crawl crawl = crawlMap.remove(id);
+        if (crawl == null) {
+            return false;
+        }
+        crawl.delete();
+        crawlStartTimes.remove(id);
+        crawlStatuses.remove(id);
+        lastCrawlRequestCounts.remove(id);
+        lastCrawlRequestUpdateTimes.remove(id);
+        return true;
     }
 }

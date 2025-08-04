@@ -158,4 +158,19 @@ public class PwnService {
     public boolean isNotSameOrigin(String host, String origin) {
         return Utils.isNotSameOrigin(host, origin);
     }
+    public int doCrawl(String url) {
+        return scanService.doCrawl(url);
+    }
+
+    public String getCrawlStatus() {
+        return scanService.getCrawlStatus();
+    }
+
+    public String getCrawlById(int id) {
+        return scanService.getCrawlById(id);
+    }
+
+    public boolean cancelCrawl(int id) {
+        return scanService.cancelCrawl(id);
+    }
 }

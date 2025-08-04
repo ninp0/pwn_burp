@@ -308,16 +308,18 @@ public class ScanHandler {
             if (urlMsg == null || urlMsg.url == null || urlMsg.url.isEmpty()) {
                 throw new IllegalArgumentException("Missing or invalid 'url' field in request body");
             }
-            URL targetUrl;
             try {
-                targetUrl = new URL(urlMsg.url);
+                new URL(urlMsg.url); // Validate URL
             } catch (MalformedURLException e) {
                 throw new IllegalArgumentException("Invalid URL format: " + e.getMessage());
             }
-            pwnService.sendToSpider(targetUrl);
-            pwnService.getLogging().logToOutput("Spidering started for URL: " + urlMsg.url);
+            int id = pwnService.doCrawl(urlMsg.url);
+            if (id == -1) {
+                throw new IllegalArgumentException("Target out of scope");
+            }
+            pwnService.getLogging().logToOutput("Spidering started for URL: " + urlMsg.url + " with ID: " + id);
             ctx.status(201);
-            ctx.json(new ApiResponse("spider", "started"));
+            ctx.json(new ApiResponse("id", id));
         } catch (IllegalArgumentException e) {
             ctx.status(400);
             ctx.json(pwnService.apiError("error", e.getMessage()));
@@ -325,6 +327,80 @@ public class ScanHandler {
             pwnService.getLogging().logToError("Unexpected error starting spider: " + e.getMessage());
             ctx.status(500);
             ctx.json(pwnService.apiError("error", "Failed to start spider: " + e.getMessage()));
+        }
+    }
+
+    @OpenApi(
+        summary = "Get status of all spider tasks",
+        operationId = "getSpiderStatus",
+        path = "/spider",
+        methods = {HttpMethod.GET},
+        responses = {
+            @OpenApiResponse(status = "200", description = "List of spider tasks", content = {@OpenApiContent(type = "application/json")})
+        }
+    )
+    private void getSpiderStatus(Context ctx) {
+        ctx.status(200);
+        ctx.json(pwnService.getCrawlStatus());
+    }
+
+    @OpenApi(
+        summary = "Get status of a specific spider task",
+        operationId = "getSpiderById",
+        path = "/spider/{id}",
+        methods = {HttpMethod.GET},
+        pathParams = {@OpenApiParam(name = "id", description = "Spider ID", required = true, type = Integer.class)},
+        responses = {
+            @OpenApiResponse(status = "200", description = "Spider status", content = {@OpenApiContent(type = "application/json")}),
+            @OpenApiResponse(status = "404", description = "Spider not found", content = {@OpenApiContent(from = ApiResponse.class)})
+        }
+    )
+    private void getSpiderById(Context ctx) {
+        try {
+            int id = Integer.parseInt(ctx.pathParam("id"));
+            String result = pwnService.getCrawlById(id);
+            if (result.contains("\"status\":\"not_found\"")) {
+                ctx.status(404);
+                ctx.json(pwnService.apiError("id", "spider item not found"));
+            } else {
+                ctx.status(200);
+                ctx.json(result);
+            }
+        } catch (NumberFormatException e) {
+            ctx.status(400);
+            ctx.json(pwnService.apiError("id", "Invalid spider ID format"));
+        } catch (Exception e) {
+            pwnService.getLogging().logToError("Error fetching spider status for ID " + ctx.pathParam("id") + ": " + e.getMessage());
+            ctx.status(500);
+            ctx.json(pwnService.apiError("error", "Failed to fetch spider status: " + e.getMessage()));
+        }
+    }
+
+    @OpenApi(
+        summary = "Cancel a spider task",
+        operationId = "cancelSpider",
+        path = "/spider/{id}",
+        methods = {HttpMethod.DELETE},
+        pathParams = {@OpenApiParam(name = "id", description = "Spider ID", required = true, type = Integer.class)},
+        responses = {
+            @OpenApiResponse(status = "204", description = "Spider cancelled"),
+            @OpenApiResponse(status = "404", description = "Spider not found", content = {@OpenApiContent(from = ApiResponse.class)})
+        }
+    )
+    private void cancelSpider(Context ctx) {
+        try {
+            int id = Integer.parseInt(ctx.pathParam("id"));
+            boolean cancelled = pwnService.cancelCrawl(id);
+            if (!cancelled) {
+                ctx.status(404);
+                ctx.json(pwnService.apiError("id", "spider item not found"));
+            } else {
+                ctx.status(204);
+                ctx.result("");
+            }
+        } catch (NumberFormatException e) {
+            ctx.status(400);
+            ctx.json(pwnService.apiError("id", "Invalid spider ID format"));
         }
     }
 }
