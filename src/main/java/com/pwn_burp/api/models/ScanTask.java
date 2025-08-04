@@ -1,8 +1,7 @@
 package com.pwn_burp.api.models;
 
 import burp.api.montoya.scanner.audit.issues.AuditIssue;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class ScanTask {
     private String host;

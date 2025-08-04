@@ -100,7 +100,6 @@
 │       │           │   │   ├── ScanHandler.java
 │       │           │   │   ├── ScopeHandler.java
 │       │           │   │   ├── SiteMapHandler.java
-│       │           │   │   ├── SiteMapHandler.java.BAK
 │       │           │   │   └── ToolHandler.java
 │       │           │   ├── models
 │       │           │   │   ├── ApiResponse.java
@@ -109,23 +108,19 @@
 │       │           │   │   ├── ProxyListener.java
 │       │           │   │   ├── ScanIssue.java
 │       │           │   │   ├── ScanMessage.java
-│       │           │   │   ├── ScanMessage.java.BAK
 │       │           │   │   ├── ScanTask.java
 │       │           │   │   ├── SiteMapMessage.java
-│       │           │   │   ├── SiteMapMessage.java.BAK
 │       │           │   │   └── URLMessage.java
 │       │           │   └── RestServer.java
 │       │           ├── burp
 │       │           │   ├── CallbacksHolder.java
 │       │           │   ├── IssueService.java
 │       │           │   ├── ProxyService.java
-│       │           │   ├── ProxyService.java.BAK
 │       │           │   ├── ProxyService.java.REFLECTION
 │       │           │   ├── PwnService.java
 │       │           │   ├── ScanService.java
 │       │           │   ├── ScopeService.java
 │       │           │   ├── SiteMapService.java
-│       │           │   ├── SiteMapService.java.BAK
 │       │           │   ├── ToolService.java
 │       │           │   └── Utils.java
 │       │           ├── config
@@ -145,4 +140,4 @@
 │               └── swagger-ui-standalone-preset.js
 └── STRUCTURE.md
 
-44 directories, 102 files
+44 directories, 97 files

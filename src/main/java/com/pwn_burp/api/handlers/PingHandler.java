@@ -3,8 +3,7 @@ package com.pwn_burp.api.handlers;
 import com.pwn_burp.burp.*;
 import com.pwn_burp.api.models.*;
 import io.javalin.Javalin;
-import io.javalin.http.Context;
-import io.javalin.http.Handler;
+import io.javalin.http.*;
 import io.javalin.openapi.*;
 
 public class PingHandler {
