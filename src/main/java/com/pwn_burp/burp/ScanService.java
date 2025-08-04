@@ -307,7 +307,7 @@ public class ScanService {
 
     public int doCrawl(String url) {
         try {
-            URL parsedUrl = new URL(url);
+            URL parsedUrl = URI.create(url).toURL();
             if (!scopeService.isInScope(parsedUrl)) {
                 api.logging().logToError("Target out of scope: " + url);
                 return -1;

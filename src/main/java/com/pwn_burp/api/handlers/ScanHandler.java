@@ -312,8 +312,8 @@ public class ScanHandler {
                 throw new IllegalArgumentException("Missing or invalid 'url' field in request body");
             }
             try {
-                new URL(urlMsg.url); // Validate URL
-            } catch (MalformedURLException e) {
+                URI.create(urlMsg.url).toURL(); // Validate URL
+            } catch (IllegalArgumentException | MalformedURLException e) {
                 throw new IllegalArgumentException("Invalid URL format: " + e.getMessage());
             }
             int id = pwnService.doCrawl(urlMsg.url);
