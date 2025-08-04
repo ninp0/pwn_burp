@@ -1,6 +1,8 @@
 *.swp
 **/screenlog.*
 .DS_Store
+STRUCTURE.md
+STRUCTURE.txt
 
 
 # Ignore Gradle build directory

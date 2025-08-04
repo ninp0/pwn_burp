@@ -86,6 +86,16 @@ processResources.dependsOn copySwaggerUiAssets
 
 // Clean up the project by removing Swagger UI assets, .gradle, & build
 clean {
+    // Remove STRUCTURE.md if it exists
+    def oldStructureFile = file("${projectDir}/STRUCTURE.md")
+    if (oldStructureFile.exists()) {
+      oldStructureFile.delete()
+    }
+
+    def structureFile = file("${projectDir}/STRUCTURE.txt")
+    if (structureFile.exists()) {
+      structureFile.delete()
+    }
     // Remove all Swagger UI assets from the resources directory
     // except index.html
     def swaggerUiDir = file("${projectDir}/src/main/resources/swagger-ui")
