@@ -9,6 +9,8 @@ import io.javalin.openapi.*;
 import java.util.Base64;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.MalformedURLException;
 
 public class ScanHandler {
     private final PwnService pwnService;
@@ -28,6 +30,7 @@ public class ScanHandler {
         server.delete("/scan/active/{id}", this::cancelActiveScan);
         server.post("/scan/passive", this::startPassiveScan);
         server.get("/scanreport/{type}/{report_url}", this::generateScanReport);
+        server.post("/spider", this::startSpider);
     }
 
     @OpenApi(
@@ -285,6 +288,43 @@ public class ScanHandler {
             pwnService.getLogging().logToError("Unexpected error in generateScanReport: " + e.getMessage());
             ctx.status(500);
             ctx.json(pwnService.apiError("error", "Report generation failed: " + e.getMessage()));
+        }
+    }
+
+    @OpenApi(
+        summary = "Start spidering (crawling) a target URL",
+        operationId = "startSpider",
+        path = "/spider",
+        methods = {HttpMethod.POST},
+        requestBody = @OpenApiRequestBody(content = {@OpenApiContent(from = URLMessage.class)}),
+        responses = {
+            @OpenApiResponse(status = "201", description = "Spidering started", content = {@OpenApiContent(from = ApiResponse.class)}),
+            @OpenApiResponse(status = "400", description = "Invalid request", content = {@OpenApiContent(from = ApiResponse.class)})
+        }
+    )
+    private void startSpider(Context ctx) {
+        try {
+            URLMessage urlMsg = gson.fromJson(ctx.body(), URLMessage.class);
+            if (urlMsg == null || urlMsg.url == null || urlMsg.url.isEmpty()) {
+                throw new IllegalArgumentException("Missing or invalid 'url' field in request body");
+            }
+            URL targetUrl;
+            try {
+                targetUrl = new URL(urlMsg.url);
+            } catch (MalformedURLException e) {
+                throw new IllegalArgumentException("Invalid URL format: " + e.getMessage());
+            }
+            pwnService.sendToSpider(targetUrl);
+            pwnService.getLogging().logToOutput("Spidering started for URL: " + urlMsg.url);
+            ctx.status(201);
+            ctx.json(new ApiResponse("spider", "started"));
+        } catch (IllegalArgumentException e) {
+            ctx.status(400);
+            ctx.json(pwnService.apiError("error", e.getMessage()));
+        } catch (Exception e) {
+            pwnService.getLogging().logToError("Unexpected error starting spider: " + e.getMessage());
+            ctx.status(500);
+            ctx.json(pwnService.apiError("error", "Failed to start spider: " + e.getMessage()));
         }
     }
 }
