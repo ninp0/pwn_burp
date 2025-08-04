@@ -1,6 +1,6 @@
-# PwnBurpRestApi
+# pwn-burp.jar
 
-A Burp Suite Professional extension that exposes features via a REST API.
+A Burp Suite Professional extension that exposes Burp Suite features from a REST API.
 
 ## Features
 - Exposes Proxy, Scanner, Site Map, and Repeater functionalities via REST endpoints.
