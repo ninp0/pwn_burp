@@ -7,6 +7,7 @@ import java.util.List;
 public class ScanTask {
     private String host;
     private List<AuditIssue> issues = new ArrayList<>();
+    private int requestCount = 0;
 
     // Getter and setter for host
     public String getHost() {
@@ -23,5 +24,14 @@ public class ScanTask {
 
     public void addIssue(AuditIssue issue) {
         issues.add(issue);
+    }
+
+    // Getter and setter for requestCount
+    public int getRequestCount() {
+        return requestCount;
+    }
+
+    public void setRequestCount(int requestCount) {
+        this.requestCount = requestCount;
     }
 }
