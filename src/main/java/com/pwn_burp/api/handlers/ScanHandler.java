@@ -31,6 +31,9 @@ public class ScanHandler {
         server.post("/scan/passive", this::startPassiveScan);
         server.get("/scanreport/{type}/{report_url}", this::generateScanReport);
         server.post("/spider", this::startSpider);
+        server.get("/spider", this::getSpiderStatus);
+        server.get("/spider/{id}", this::getSpiderById);
+        server.delete("/spider/{id}", this::cancelSpider);
     }
 
     @OpenApi(
