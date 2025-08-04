@@ -346,16 +346,14 @@ public class ScanService {
                     lastUpdateTime = System.currentTimeMillis();
                 }
                 long idleTime = System.currentTimeMillis() - lastUpdateTime;
-                if (idleTime > 60000 && requestCount > 0) {  // Increased to 60s for finished
+                if (idleTime > 30000 && requestCount > 0) {
                     status = "finished";
-                } else if (elapsed > 300000 && requestCount == 0) {  // Increased to 5min for failed
+                } else if (elapsed > 60000 && requestCount == 0) {
                     status = "failed";
                 } else {
                     status = "running";
                 }
                 crawlStatuses.put(id, status);
-                // Diagnostic logging
-                api.logging().logToOutput("Crawl ID " + id + ": status=" + status + ", elapsed=" + elapsed + "ms, requestCount=" + requestCount + ", idleTime=" + idleTime + "ms");
             }
             obj.addProperty("request_count", requestCount);
             obj.addProperty("error_count", errorCount);
@@ -385,16 +383,14 @@ public class ScanService {
                 lastUpdateTime = System.currentTimeMillis();
             }
             long idleTime = System.currentTimeMillis() - lastUpdateTime;
-            if (idleTime > 60000 && requestCount > 0) {  // Increased to 60s for finished
+            if (idleTime > 30000 && requestCount > 0) {
                 status = "finished";
-            } else if (elapsed > 300000 && requestCount == 0) {  // Increased to 5min for failed
+            } else if (elapsed > 60000 && requestCount == 0) {
                 status = "failed";
             } else {
                 status = "running";
             }
             crawlStatuses.put(id, status);
-            // Diagnostic logging
-            api.logging().logToOutput("Crawl ID " + id + ": status=" + status + ", elapsed=" + elapsed + "ms, requestCount=" + requestCount + ", idleTime=" + idleTime + "ms");
         }
         obj.addProperty("request_count", requestCount);
         obj.addProperty("error_count", errorCount);
