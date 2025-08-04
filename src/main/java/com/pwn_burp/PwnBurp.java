@@ -30,7 +30,7 @@ public class PwnBurp implements BurpExtension, IBurpExtender {
     public void initialize(MontoyaApi api) {
         synchronized (lock) {
             PwnBurp.api = api;
-            api.extension().setName("PWN Burp REST API >> https://github.com/0dayinc/pwn-burp");
+            api.extension().setName("PWN Burp REST API >> https://github.com/0dayinc/pwn_burp");
             initializeServices();
         }
     }
