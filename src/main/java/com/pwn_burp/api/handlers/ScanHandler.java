@@ -109,7 +109,7 @@ public class ScanHandler {
             ctx.status(201);
             ctx.json(new ApiResponse("id", id));
         } catch (IllegalArgumentException e) {
-            ctx.status(400);
+            ctx.status(200);
             ctx.json(pwnService.apiError("error", e.getMessage()));
         }
     }
@@ -299,7 +299,7 @@ public class ScanHandler {
         methods = {HttpMethod.POST},
         requestBody = @OpenApiRequestBody(content = {@OpenApiContent(from = URLMessage.class)}),
         responses = {
-            @OpenApiResponse(status = "201", description = "Spidering started", content = {@OpenApiContent(from = ApiResponse.class)}),
+            @OpenApiResponse(status = "201", description = "Spidering started", content = {@OpenApiContent(from = SpiderResponse.class)}),
             @OpenApiResponse(status = "400", description = "Invalid request", content = {@OpenApiContent(from = ApiResponse.class)})
         }
     )
@@ -320,7 +320,7 @@ public class ScanHandler {
             }
             pwnService.getLogging().logToOutput("Spidering started for URL: " + urlMsg.url + " with ID: " + id);
             ctx.status(201);
-            ctx.json(new ApiResponse("id", id));
+            ctx.json(new SpiderResponse(id));
         } catch (IllegalArgumentException e) {
             ctx.status(400);
             ctx.json(pwnService.apiError("error", e.getMessage()));

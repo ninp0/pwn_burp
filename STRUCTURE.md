@@ -25,6 +25,7 @@
 │   │           │       │   │   ├── ScanTask.class
 │   │           │       │   │   ├── SiteMapMessage$HttpService.class
 │   │           │       │   │   ├── SiteMapMessage.class
+│   │           │       │   │   ├── SpiderResponse.class
 │   │           │       │   │   └── URLMessage.class
 │   │           │       │   └── RestServer.class
 │   │           │       ├── burp
@@ -110,6 +111,7 @@
 │       │           │   │   ├── ScanMessage.java
 │       │           │   │   ├── ScanTask.java
 │       │           │   │   ├── SiteMapMessage.java
+│       │           │   │   ├── SpiderResponse.java
 │       │           │   │   └── URLMessage.java
 │       │           │   └── RestServer.java
 │       │           ├── burp
@@ -140,4 +142,4 @@
 │               └── swagger-ui-standalone-preset.js
 └── STRUCTURE.md
 
-44 directories, 97 files
+44 directories, 99 files
