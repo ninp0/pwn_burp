@@ -1,6 +1,6 @@
 package com.pwn_burp.api.handlers;
 
-import com.google.gson.Gson;
+import com.google.gson.*;
 import com.pwn_burp.burp.*;
 import com.pwn_burp.api.models.*;
 import io.javalin.Javalin;
