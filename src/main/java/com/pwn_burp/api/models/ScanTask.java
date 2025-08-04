@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ScanTask {
-    private String host; // Added host field
+    private String host;
     private List<AuditIssue> issues = new ArrayList<>();
 
     // Getter and setter for host
