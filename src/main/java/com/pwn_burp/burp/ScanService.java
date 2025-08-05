@@ -36,9 +36,9 @@ public class ScanService {
     private final Map<Integer, Integer> lastCrawlRequestCounts = new ConcurrentHashMap<>();
     private final Map<Integer, Long> lastCrawlRequestUpdateTimes = new ConcurrentHashMap<>();
     private final LinkedList<Long> recentScanStarts = new LinkedList<>();
-    private static final int MAX_SCANS_PER_MINUTE = 5;
+    private static final int MAX_SCANS_PER_MINUTE = 300;
     private static final long RATE_WINDOW_MS = 60000;
-    private static final int MAX_QUEUED_SCANS = 20;
+    private static final int MAX_QUEUED_SCANS = 300;
 
     // Inner class to store IScanQueueItem and host metadata
     private static class ScanEntry {
