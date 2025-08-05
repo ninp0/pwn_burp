@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.RejectedExecutionException;
 
 public class ScanService {
     private final MontoyaApi api;
@@ -87,7 +88,13 @@ public class ScanService {
                     }
 
                     if (recentScanStarts.size() < MAX_SCANS_PER_MINUTE && scanQueue.size() < MAX_QUEUED_SCANS) {
-                        IScanQueueItem scanItem = callbacks.doActiveScan(host, port, useHttps, request);
+                        IScanQueueItem scanItem = null;
+                        try {
+                            scanItem = callbacks.doActiveScan(host, port, useHttps, request);
+                        } catch (RejectedExecutionException e) {
+                            api.logging().logToError("Thread pool exhausted, waiting to retry active scan: " + e.getMessage());
+                        }
+
                         if (scanItem != null) {
                             int scanId = generateScanId();
                             scanQueue.put(scanId, new ScanEntry(scanItem, host));
@@ -100,7 +107,6 @@ public class ScanService {
                             recentScanStarts.addLast(now);
                             return scanId; // Return the assigned scanId
                         }
-                        // If scanItem is null, continue to wait
                     }
                 }
 
