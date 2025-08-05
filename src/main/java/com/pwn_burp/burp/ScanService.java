@@ -87,8 +87,7 @@ public class ScanService {
             return -1; // Indicate failure if scanItem is null
         } catch (Exception e) {
             api.logging().logToError("Active scan failed: " + e.getMessage());
-            return -1;
-            //throw new RuntimeException("Failed to perform active scan", e);
+            throw new RuntimeException("Failed to perform active scan", e);
         }
     }
 
