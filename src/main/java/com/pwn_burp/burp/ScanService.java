@@ -16,7 +16,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.RejectedExecutionException;
 
 public class ScanService {
     private final MontoyaApi api;
@@ -36,10 +35,6 @@ public class ScanService {
     private final Map<Integer, String> crawlStatuses = new ConcurrentHashMap<>();
     private final Map<Integer, Integer> lastCrawlRequestCounts = new ConcurrentHashMap<>();
     private final Map<Integer, Long> lastCrawlRequestUpdateTimes = new ConcurrentHashMap<>();
-    private final LinkedList<Long> recentScanStarts = new LinkedList<>();
-    private static final int MAX_SCANS_PER_MINUTE = 300;
-    private static final long RATE_WINDOW_MS = 60000;
-    private static final int MAX_QUEUED_SCANS = 300;
 
     // Inner class to store IScanQueueItem and host metadata
     private static class ScanEntry {
@@ -77,86 +72,23 @@ public class ScanService {
                 api.logging().logToError("Target out of scope: " + url);
                 return -1; // Indicate failure
             }
-
-            while (true) {
-                cleanUpFinishedScans();
-
-                synchronized (recentScanStarts) {
-                    long now = System.currentTimeMillis();
-                    while (!recentScanStarts.isEmpty() && now - recentScanStarts.peekFirst() > RATE_WINDOW_MS) {
-                        recentScanStarts.pollFirst();
-                    }
-
-                    if (recentScanStarts.size() < MAX_SCANS_PER_MINUTE && scanQueue.size() < MAX_QUEUED_SCANS) {
-                        IScanQueueItem scanItem = null;
-                        try {
-                            scanItem = callbacks.doActiveScan(host, port, useHttps, request);
-                        } catch (RejectedExecutionException e) {
-                            api.logging().logToError("Thread pool exhausted, waiting to retry active scan: " + e.getMessage());
-                        }
-
-                        if (scanItem != null) {
-                            int scanId = generateScanId();
-                            scanQueue.put(scanId, new ScanEntry(scanItem, host));
-                            scanStartTimes.put(scanId, now);
-                            scanStatuses.put(scanId, "queued");
-                            lastIssueCounts.put(scanId, 0);
-                            lastRequestCounts.put(scanId, 0);
-                            // Started active scan ID for url + path
-                            api.logging().logToOutput("Started active scan ID " + scanId + " for " + url + uri.getPath());
-                            recentScanStarts.addLast(now);
-                            return scanId; // Return the assigned scanId
-                        }
-                    }
-                }
-
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    api.logging().logToError("Interrupted while waiting for scan availability");
-                    return -1;
-                }
+            IScanQueueItem scanItem = callbacks.doActiveScan(host, port, useHttps, request);
+            if (scanItem != null) {
+                int scanId = generateScanId();
+                scanQueue.put(scanId, new ScanEntry(scanItem, host));
+                scanStartTimes.put(scanId, System.currentTimeMillis());
+                scanStatuses.put(scanId, "queued");
+                lastIssueCounts.put(scanId, 0);
+                lastRequestCounts.put(scanId, 0);
+                // Started active scan ID for url + path
+                api.logging().logToOutput("Started active scan ID " + scanId + " for " + url + uri.getPath());
+                return scanId; // Return the assigned scanId
             }
+            return -1; // Indicate failure if scanItem is null
         } catch (Exception e) {
             api.logging().logToError("Active scan failed: " + e.getMessage());
-            throw new RuntimeException("Failed to perform active scan", e);
-        }
-    }
-
-    private void cleanUpFinishedScans() {
-        for (Iterator<Map.Entry<Integer, ScanEntry>> it = scanQueue.entrySet().iterator(); it.hasNext(); ) {
-            Map.Entry<Integer, ScanEntry> e = it.next();
-            int id = e.getKey();
-            ScanEntry entry = e.getValue();
-            String host = entry.getHost();
-            IScanQueueItem scanItem = entry.getScanItem();
-            AuditIssue[] issues = api.siteMap().issues().stream()
-                    .filter(issue -> issue.httpService() != null && issue.httpService().host().equals(host))
-                    .toArray(AuditIssue[]::new);
-            int issueCount = issues.length;
-            int requestCount = scanItem.getNumRequests();
-            Long startTime = scanStartTimes.get(id);
-            if (startTime == null) continue;
-            long elapsed = System.currentTimeMillis() - startTime;
-            String scanStatus = scanItem.getStatus();
-            int percentComplete = scanItem.getPercentageComplete() & 0xFF;
-            String status;
-            if (scanStatus.equalsIgnoreCase("finished") || percentComplete >= 100) {
-                status = "finished";
-            } else if (elapsed > 60000 && issueCount == 0 && requestCount == 0) {
-                status = "failed";
-            } else {
-                continue;
-            }
-            // Remove if finished or failed
-            it.remove();
-            scanStartTimes.remove(id);
-            scanStatuses.remove(id);
-            lastIssueCounts.remove(id);
-            lastIssueUpdateTimes.remove(id);
-            lastRequestCounts.remove(id);
-            lastRequestUpdateTimes.remove(id);
+            return -1;
+            //throw new RuntimeException("Failed to perform active scan", e);
         }
     }
 
@@ -196,7 +128,8 @@ public class ScanService {
             Long startTime = scanStartTimes.get(id);
             String status = scanStatuses.getOrDefault(id, "queued");
             int percentComplete = scanItem.getPercentageComplete() & 0xFF; // Convert byte to int (0-100)
-            int issueCount = issues.length;
+            // CHANGE: Use issues array length instead of scanItem.getIssues()
+            int issueCount = issues.length; // Replaced scanItem.getIssues().length
             int requestCount = scanItem.getNumRequests();
             int insertionPointCount = scanItem.getNumInsertionPoints();
             int oldIssueCount = lastIssueCounts.getOrDefault(id, 0);
@@ -241,8 +174,9 @@ public class ScanService {
             obj.addProperty("status", status);
             items.add(obj);
         });
-        cleanUpFinishedScans(); // Ensure cleanup after status check
-        return items.toString();
+        String result = items.toString();
+
+        return result;
     }
 
     @SuppressWarnings("deprecation")
@@ -271,7 +205,8 @@ public class ScanService {
         Long startTime = scanStartTimes.get(id);
         String status = scanStatuses.getOrDefault(id, "queued");
         int percentComplete = scanItem.getPercentageComplete() & 0xFF; // Convert byte to int
-        int issueCount = issues.length;
+        // CHANGE: Use issues array length instead of scanItem.getIssues()
+        int issueCount = issues.length; // Replaced scanItem.getIssues().length
         int requestCount = scanItem.getNumRequests();
         int insertionPointCount = scanItem.getNumInsertionPoints();
         int oldIssueCount = lastIssueCounts.getOrDefault(id, 0);
@@ -313,18 +248,6 @@ public class ScanService {
         obj.addProperty("status", status);
         // get value of status from obj
         api.logging().logToOutput("Scan ID " + id + " status: " + status);
-
-        // Clean up if finished or failed
-        if ("finished".equals(status) || "failed".equals(status)) {
-            scanQueue.remove(id);
-            scanStartTimes.remove(id);
-            scanStatuses.remove(id);
-            lastIssueCounts.remove(id);
-            lastIssueUpdateTimes.remove(id);
-            lastRequestCounts.remove(id);
-            lastRequestUpdateTimes.remove(id);
-        }
-
         return obj.toString();
     }
 
