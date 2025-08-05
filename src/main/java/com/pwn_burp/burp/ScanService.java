@@ -126,7 +126,9 @@ public class ScanService {
             obj.add("issues", Utils.scanIssuesToJsonArray(issues));
             Long startTime = scanStartTimes.get(id);
             String status = scanStatuses.getOrDefault(id, "queued");
-            int percentComplete = scanItem.getPercentageComplete() & 0xFF; // Convert byte to int (0-100)
+            // int percentComplete = scanItem.getPercentageComplete() & 0xFF;
+            // Convert byte to int (0-100)
+            int percentComplete = Byte.toUnsignedInt(scanItem.getPercentageComplete());
             // CHANGE: Use issues array length instead of scanItem.getIssues()
             int issueCount = issues.length; // Replaced scanItem.getIssues().length
             int requestCount = scanItem.getNumRequests();
