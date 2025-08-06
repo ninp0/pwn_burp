@@ -26,6 +26,7 @@ public class ScanService {
     private final Map<Integer, String> scanStatuses = new ConcurrentHashMap<>();
     private final Map<Integer, Integer> lastIssueCounts = new ConcurrentHashMap<>();
     private final Map<Integer, Long> lastIssueUpdateTimes = new ConcurrentHashMap<>();
+    private final Map<Integer, Integer> lastPercentCompleteValue = new ConcurrentHashMap<>();
     private final Map<Integer, Integer> lastRequestCounts = new ConcurrentHashMap<>();
     private final Map<Integer, Long> lastRequestUpdateTimes = new ConcurrentHashMap<>();
     private final AtomicInteger scanIdCounter = new AtomicInteger(0);
@@ -205,7 +206,8 @@ public class ScanService {
         obj.add("issues", Utils.scanIssuesToJsonArray(issues));
         Long startTime = scanStartTimes.get(id);
         String status = scanStatuses.getOrDefault(id, "queued");
-        int percentComplete = scanItem.getPercentageComplete() & 0xFF; // Convert byte to int
+        //int percentComplete = scanItem.getPercentageComplete() & 0xFF; // Convert byte to int
+        int percentComplete = Byte.toUnsignedInt(scanItem.getPercentageComplete());
         // CHANGE: Use issues array length instead of scanItem.getIssues()
         int issueCount = issues.length; // Replaced scanItem.getIssues().length
         int requestCount = scanItem.getNumRequests();
@@ -213,6 +215,7 @@ public class ScanService {
         int oldIssueCount = lastIssueCounts.getOrDefault(id, 0);
         int oldRequestCount = lastRequestCounts.getOrDefault(id, 0);
         Long lastIssueUpdate = lastIssueUpdateTimes.get(id);
+        int lastPercentComplete = lastPercentCompleteValue.get(id);
         Long lastRequestUpdate = lastRequestUpdateTimes.get(id);
         String scanStatus = scanItem.getStatus();
 
@@ -248,7 +251,10 @@ public class ScanService {
         obj.addProperty("percent_complete", percentComplete);
         obj.addProperty("status", status);
         // get value of status from obj
-        api.logging().logToOutput("Scan ID " + id + " status: " + status);
+        if (percentComplete != lastPercentComplete) {
+	    lastPercentCompleteValue.put(id, percentComplete);
+	    api.logging().logToOutput("Scan ID " + id + " percent complete updated: " + percentComplete + "%");
+        }
         return obj.toString();
     }
 
