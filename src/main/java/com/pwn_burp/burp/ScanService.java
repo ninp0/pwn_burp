@@ -80,9 +80,10 @@ public class ScanService {
                 scanStartTimes.put(scanId, System.currentTimeMillis());
                 scanStatuses.put(scanId, "queued");
                 lastIssueCounts.put(scanId, 0);
+                lastPercentCompleteValue.put(scanId, 0);
                 lastRequestCounts.put(scanId, 0);
-                // Started active scan ID for url + path
-                api.logging().logToOutput("Started active scan ID " + scanId + " for " + url + uri.getPath());
+                // Started active scan ID for url
+                api.logging().logToOutput("Started active scan ID " + scanId + " for " + url);
                 return scanId; // Return the assigned scanId
             }
             return -1; // Indicate failure if scanItem is null
@@ -127,14 +128,13 @@ public class ScanService {
             obj.add("issues", Utils.scanIssuesToJsonArray(issues));
             Long startTime = scanStartTimes.get(id);
             String status = scanStatuses.getOrDefault(id, "queued");
-            // int percentComplete = scanItem.getPercentageComplete() & 0xFF;
             // Convert byte to int (0-100)
             int percentComplete = Byte.toUnsignedInt(scanItem.getPercentageComplete());
-            // CHANGE: Use issues array length instead of scanItem.getIssues()
-            int issueCount = issues.length; // Replaced scanItem.getIssues().length
+            int issueCount = issues.length;
             int requestCount = scanItem.getNumRequests();
             int insertionPointCount = scanItem.getNumInsertionPoints();
             int oldIssueCount = lastIssueCounts.getOrDefault(id, 0);
+            int lastPercentComplete = lastPercentCompleteValue.getOrDefault(id, 0);
             int oldRequestCount = lastRequestCounts.getOrDefault(id, 0);
             Long lastIssueUpdate = lastIssueUpdateTimes.get(id);
             Long lastRequestUpdate = lastRequestUpdateTimes.get(id);
@@ -168,6 +168,10 @@ public class ScanService {
                     }
                     scanStatuses.put(id, status);
                 }
+                if (percentComplete != lastPercentComplete) {
+                    lastPercentCompleteValue.put(id, percentComplete);
+		    api.logging().logToOutput("Scan ID " + id + " percent complete updated: " + percentComplete + "%");
+		}
             }
             obj.addProperty("error_count", scanItem.getNumErrors());
             obj.addProperty("insertion_point_count", insertionPointCount);
@@ -206,16 +210,15 @@ public class ScanService {
         obj.add("issues", Utils.scanIssuesToJsonArray(issues));
         Long startTime = scanStartTimes.get(id);
         String status = scanStatuses.getOrDefault(id, "queued");
-        //int percentComplete = scanItem.getPercentageComplete() & 0xFF; // Convert byte to int
+        // Convert byte to int (0-100)
         int percentComplete = Byte.toUnsignedInt(scanItem.getPercentageComplete());
-        // CHANGE: Use issues array length instead of scanItem.getIssues()
-        int issueCount = issues.length; // Replaced scanItem.getIssues().length
+        int issueCount = issues.length;
         int requestCount = scanItem.getNumRequests();
         int insertionPointCount = scanItem.getNumInsertionPoints();
         int oldIssueCount = lastIssueCounts.getOrDefault(id, 0);
+        int lastPercentComplete = lastPercentCompleteValue.getOrDefault(id, 0);
         int oldRequestCount = lastRequestCounts.getOrDefault(id, 0);
         Long lastIssueUpdate = lastIssueUpdateTimes.get(id);
-        int lastPercentComplete = lastPercentCompleteValue.get(id);
         Long lastRequestUpdate = lastRequestUpdateTimes.get(id);
         String scanStatus = scanItem.getStatus();
 
@@ -244,17 +247,18 @@ public class ScanService {
                 }
                 scanStatuses.put(id, status);
             }
+            if (percentComplete != lastPercentComplete) {
+                lastPercentCompleteValue.put(id, percentComplete);
+                api.logging().logToOutput("Scan ID " + id + " percent complete updated: " + percentComplete + "%");
+            }
         }
+
         obj.addProperty("error_count", scanItem.getNumErrors());
         obj.addProperty("insertion_point_count", insertionPointCount);
         obj.addProperty("request_count", requestCount);
         obj.addProperty("percent_complete", percentComplete);
         obj.addProperty("status", status);
-        // get value of status from obj
-        if (percentComplete != lastPercentComplete) {
-	    lastPercentCompleteValue.put(id, percentComplete);
-	    api.logging().logToOutput("Scan ID " + id + " percent complete updated: " + percentComplete + "%");
-        }
+
         return obj.toString();
     }
 
@@ -269,6 +273,7 @@ public class ScanService {
         scanStartTimes.remove(id);
         scanStatuses.remove(id);
         lastIssueCounts.remove(id);
+        lastPercentCompleteValue.remove(id);
         lastIssueUpdateTimes.remove(id);
         lastRequestCounts.remove(id);
         lastRequestUpdateTimes.remove(id);
