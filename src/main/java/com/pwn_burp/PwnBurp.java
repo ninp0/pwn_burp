@@ -30,7 +30,7 @@ public class PwnBurp implements BurpExtension, IBurpExtender {
             PwnBurp.api = api;
             Version version = api.burpSuite().version();
             long build_number = version.buildNumber();
-            api.extension().setName("Burp REST API for PWN (build: " + build_number + ")";
+            api.extension().setName("Burp REST API for PWN (build: " + build_number + ")");
             initializeServices();
         }
     }
