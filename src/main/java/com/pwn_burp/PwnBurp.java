@@ -1,13 +1,11 @@
 package com.pwn_burp;
 
-import burp.IBurpExtender;
-import burp.IBurpExtenderCallbacks;
-import burp.api.montoya.BurpExtension;
-import burp.api.montoya.MontoyaApi;
+import burp.*;
+import burp.api.montoya.*;
+import burp.api.montoya.core.*;
 import com.pwn_burp.api.RestServer;
 import com.pwn_burp.burp.PwnService;
 import com.pwn_burp.config.ConfigManager;
-import com.pwn_burp.api.RestServer;
 
 public class PwnBurp implements BurpExtension, IBurpExtender {
     private static volatile MontoyaApi api;
@@ -30,7 +28,9 @@ public class PwnBurp implements BurpExtension, IBurpExtender {
     public void initialize(MontoyaApi api) {
         synchronized (lock) {
             PwnBurp.api = api;
-            api.extension().setName("PWN Burp REST API >> https://github.com/0dayinc/pwn_burp");
+            // String api_version = api.core().version().toString();
+            //api.extension().setName("PWN Burp REST API: " + api_version);
+            api.extension().setName("PWN Burp REST API");
             initializeServices();
         }
     }

@@ -2,6 +2,7 @@ package com.pwn_burp.burp;
 
 import burp.*;
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.core.*;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.sitemap.SiteMapFilter;
 import burp.api.montoya.scanner.*;
@@ -16,6 +17,7 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.lang.reflect.Method;
 
 public class ScanService {
     private final MontoyaApi api;
@@ -347,92 +349,6 @@ public class ScanService {
         crawlMap.forEach((id, crawl) -> {
             JsonObject obj = new JsonObject();
             obj.addProperty("id", id);
-            String baseUrl = crawlBaseUrls.get(id);
-            int requestCount = 0;
-            if (baseUrl != null) {
-                List<HttpRequestResponse> siteMapItems = api.siteMap().requestResponses(SiteMapFilter.prefixFilter(baseUrl));
-                int currentSize = siteMapItems.size();
-                int initialSize = initialCrawlSizes.getOrDefault(id, 0);
-                requestCount = currentSize - initialSize;
-            }
-            int errorCount = 0; // Unable to track accurately, default to 0
-            String status = crawlStatuses.getOrDefault(id, "queued");
-            Long startTime = crawlStartTimes.get(id);
-            int oldRequestCount = lastCrawlRequestCounts.getOrDefault(id, 0);
-            long lastUpdateTime = lastCrawlRequestUpdateTimes.getOrDefault(id, 0L);
-            if (startTime != null) {
-                long elapsed = System.currentTimeMillis() - startTime;
-                if (requestCount != oldRequestCount) {
-                    lastCrawlRequestCounts.put(id, requestCount);
-                    lastCrawlRequestUpdateTimes.put(id, System.currentTimeMillis());
-                    lastUpdateTime = System.currentTimeMillis();
-                }
-                long idleTime = System.currentTimeMillis() - lastUpdateTime;
-                if (idleTime > 30000 && requestCount > 0) {
-                    status = "finished";
-                } else if (elapsed > 60000 && requestCount == 0) {
-                    status = "failed";
-                } else {
-                    status = "running";
-                }
-                crawlStatuses.put(id, status);
-            }
-            obj.addProperty("request_count", requestCount);
-            obj.addProperty("error_count", errorCount);
-            obj.addProperty("status", status);
-            items.add(obj);
-        });
-        return items.toString();
-    }
-
-    public String getCrawlById(int id) {
-        Crawl crawl = crawlMap.get(id);
-        if (crawl == null) {
-            return "{\"status\":\"not_found\"}";
-        }
-        JsonObject obj = new JsonObject();
-        String baseUrl = crawlBaseUrls.get(id);
-        int requestCount = 0;
-        if (baseUrl != null) {
-            List<HttpRequestResponse> siteMapItems = api.siteMap().requestResponses(SiteMapFilter.prefixFilter(baseUrl));
-            int currentSize = siteMapItems.size();
-            int initialSize = initialCrawlSizes.getOrDefault(id, 0);
-            requestCount = currentSize - initialSize;
-        }
-        int errorCount = 0; // Unable to track accurately, default to 0
-        String status = crawlStatuses.getOrDefault(id, "queued");
-        Long startTime = crawlStartTimes.get(id);
-        int oldRequestCount = lastCrawlRequestCounts.getOrDefault(id, 0);
-        long lastUpdateTime = lastCrawlRequestUpdateTimes.getOrDefault(id, 0L);
-        if (startTime != null) {
-            long elapsed = System.currentTimeMillis() - startTime;
-            if (requestCount != oldRequestCount) {
-                lastCrawlRequestCounts.put(id, requestCount);
-                lastCrawlRequestUpdateTimes.put(id, System.currentTimeMillis());
-                lastUpdateTime = System.currentTimeMillis();
-            }
-            long idleTime = System.currentTimeMillis() - lastUpdateTime;
-            if (idleTime > 30000 && requestCount > 0 || elapsed > 60000 && requestCount == 0) {
-                status = "finished";
-            } else {
-                status = "running";
-            }
-            crawlStatuses.put(id, status);
-        }
-        api.logging().logToOutput("Crawl ID " + id + " discovered: " + requestCount + ", status: " + status);
-        obj.addProperty("request_count", requestCount);
-        obj.addProperty("error_count", errorCount);
-        obj.addProperty("status", status);
-        return obj.toString();
-    }
-
-/*
-    // TODO: Use these methods once crawl.requestCount() and crawl.errorCount() are available in Montoya API
-    public String getCrawlStatus() {
-        JsonArray items = new JsonArray();
-        crawlMap.forEach((id, crawl) -> {
-            JsonObject obj = new JsonObject();
-            obj.addProperty("id", id);
             int requestCount = crawl.requestCount();
             int errorCount = crawl.errorCount();
             String status = crawlStatuses.getOrDefault(id, "queued");
@@ -447,10 +363,8 @@ public class ScanService {
                     lastUpdateTime = System.currentTimeMillis();
                 }
                 long idleTime = System.currentTimeMillis() - lastUpdateTime;
-                if (idleTime > 30000 && requestCount > 0) {
+                if ( (idleTime > 30000 && requestCount > 0) || (elapsed > 60000 && requestCount == 0) ) {
                     status = "finished";
-                } else if (elapsed > 60000 && requestCount == 0) {
-                    status = "failed";
                 } else {
                     status = "running";
                 }
@@ -466,12 +380,39 @@ public class ScanService {
 
     public String getCrawlById(int id) {
         Crawl crawl = crawlMap.get(id);
+
+        /*
+        // DEBUGGING
+        // Build a string listing all public methods
+        StringBuilder sb = new StringBuilder("Methods available\n");
+        Class<?> clazz = crawl.getClass();
+        // Use getDeclaredMethods() if you want only methods
+        // declared in this class, excluding inherited
+        Method[] methods = clazz.getMethods();
+        for (Method method : methods) {
+            // Dumps the full method signature
+            // (e.g., public java.lang.String com.example.Crawl.getName())
+            sb.append(method.toString()).append("\n");
+            // Optional: Filter for getters only
+            // String name = method.getName();
+            // if ((name.startsWith("get") || name.startsWith("is")) &&
+            //     method.getParameterCount() == 0 &&
+            //     !method.getReturnType().equals(void.class) &&
+            //     !name.equals("getClass")) {  // Exclude getClass() if desired
+            //     sb.append(name).append("()\n");
+            // }
+        }
+        api.logging().logToOutput(sb.toString());
+        */
+
         if (crawl == null) {
             return "{\"status\":\"not_found\"}";
         }
         JsonObject obj = new JsonObject();
         int requestCount = crawl.requestCount();
         int errorCount = crawl.errorCount();
+        int hashCode = crawl.hashCode();
+        // String statusMsg = crawl.statusMessage(); // Not implemented in Montoya API yet
         String status = crawlStatuses.getOrDefault(id, "queued");
         Long startTime = crawlStartTimes.get(id);
         int oldRequestCount = lastCrawlRequestCounts.getOrDefault(id, 0);
@@ -484,22 +425,19 @@ public class ScanService {
                 lastUpdateTime = System.currentTimeMillis();
             }
             long idleTime = System.currentTimeMillis() - lastUpdateTime;
-            if (idleTime > 30000 && requestCount > 0) {
+            if ( (idleTime > 30000 && requestCount > 0) || (elapsed > 60000 && requestCount == 0) ) {
                 status = "finished";
-            } else if (elapsed > 60000 && requestCount == 0) {
-                status = "failed";
             } else {
                 status = "running";
             }
             crawlStatuses.put(id, status);
         }
-        api.logging().logToOutput("Crawl ID " + id + " request count: " + requestCount + ", status: " + status);
+        api.logging().logToOutput("Crawl ID " + id + " request count: " + requestCount + ", status: " + status + ", error count: " + errorCount);
         obj.addProperty("request_count", requestCount);
         obj.addProperty("error_count", errorCount);
         obj.addProperty("status", status);
         return obj.toString();
     }
-*/
 
     public boolean cancelCrawl(int id) {
         Crawl crawl = crawlMap.remove(id);

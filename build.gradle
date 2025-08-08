@@ -11,8 +11,8 @@ repositories {
 }
 
 dependencies {
+    compileOnly files('/opt/burpsuite/burpsuite-pro.jar')
     implementation 'net.portswigger.burp.extensions:montoya-api:+'
-    implementation files('/opt/burpsuite/burpsuite-pro.jar')
     implementation 'io.javalin:javalin:+'
     implementation 'io.javalin.community.openapi:javalin-openapi-plugin:+'
     implementation 'io.javalin.community.openapi:javalin-swagger-plugin:+'
