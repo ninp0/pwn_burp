@@ -28,9 +28,9 @@ public class PwnBurp implements BurpExtension, IBurpExtender {
     public void initialize(MontoyaApi api) {
         synchronized (lock) {
             PwnBurp.api = api;
-            // String api_version = api.core().version().toString();
-            //api.extension().setName("PWN Burp REST API: " + api_version);
-            api.extension().setName("PWN Burp REST API");
+            Version version = api.burpSuite().version();
+            long build_number = version.buildNumber();
+            api.extension().setName("Burp REST API for PWN (build: " + build_number + ")";
             initializeServices();
         }
     }
