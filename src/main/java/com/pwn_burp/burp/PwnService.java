@@ -17,20 +17,22 @@ import java.util.List;
 
 public class PwnService {
     private final MontoyaApi api;
-    private final ScanService scanService;
-    private final ProxyService proxyService;
-    private final ScopeService scopeService;
-    private final SiteMapService siteMapService;
     private final IssueService issueService;
+    private final ProxyService proxyService;
+    private final ScanService scanService;
+    private final ScopeService scopeService;
+    private final ShutdownService shutdownService;
+    private final SiteMapService siteMapService;
     private final ToolService toolService;
 
     public PwnService(MontoyaApi api, IBurpExtenderCallbacks callbacks) {
         this.api = api;
+        this.issueService = new IssueService(api);
+        this.proxyService = new ProxyService(api, callbacks);
         this.scopeService = new ScopeService(api);
         this.scanService = new ScanService(api, scopeService, callbacks);
-        this.proxyService = new ProxyService(api, callbacks);
+        this.shutdownService = new ShutdownService(api);
         this.siteMapService = new SiteMapService(api);
-        this.issueService = new IssueService(api);
         this.toolService = new ToolService(api);
     }
 
@@ -171,5 +173,9 @@ public class PwnService {
 
     public boolean cancelCrawl(int id) {
         return scanService.cancelCrawl(id);
+    }
+
+    public void shutdown() {
+        shutdownService.shutdown();
     }
 }
