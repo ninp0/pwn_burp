@@ -42,6 +42,7 @@ public class RestServer {
             new PingHandler(pwnService).register(this.server);
             new ScopeHandler(pwnService).register(this.server);
             new ScanHandler(pwnService).register(this.server);
+            new ShutdownHandler(pwnService).register(this.server);
             new SiteMapHandler(pwnService).register(this.server);
             new ProxyHandler(pwnService).register(this.server);
             new CookieJarHandler(pwnService).register(this.server);
