@@ -33,6 +33,7 @@ public class RepeaterService {
         item.id = id;
         item.name = name;
         item.request = requestBase64;
+        item.response = null;
         items.put(id, item);
 
         // Send to Burp Repeater tab
@@ -81,6 +82,7 @@ public class RepeaterService {
         RepeaterResponse resp = new RepeaterResponse();
         resp.request = Base64.getEncoder().encodeToString(rr.request().toByteArray().getBytes());
         resp.response = Base64.getEncoder().encodeToString(rr.response().toByteArray().getBytes());
+        item.response = resp.response;
         return resp;
     }
 
