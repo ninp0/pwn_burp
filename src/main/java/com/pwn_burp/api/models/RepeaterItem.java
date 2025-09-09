@@ -4,4 +4,5 @@ public class RepeaterItem {
     public int id;
     public String name;
     public String request; // Base64-encoded raw HTTP request
+    public String response; // Base64-encoded raw HTTP response
 }
