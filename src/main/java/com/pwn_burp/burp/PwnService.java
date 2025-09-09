@@ -19,21 +19,21 @@ public class PwnService {
     private final MontoyaApi api;
     private final IssueService issueService;
     private final ProxyService proxyService;
+    private final RepeaterService repeaterService;
     private final ScanService scanService;
     private final ScopeService scopeService;
     private final ShutdownService shutdownService;
     private final SiteMapService siteMapService;
-    private final ToolService toolService;
 
     public PwnService(MontoyaApi api, IBurpExtenderCallbacks callbacks) {
         this.api = api;
         this.issueService = new IssueService(api);
         this.proxyService = new ProxyService(api, callbacks);
+        this.repeaterService = new RepeaterService(api);
         this.scopeService = new ScopeService(api);
         this.scanService = new ScanService(api, scopeService, callbacks);
         this.shutdownService = new ShutdownService(api);
         this.siteMapService = new SiteMapService(api);
-        this.toolService = new ToolService(api);
     }
 
     public Logging getLogging() {
@@ -128,16 +128,32 @@ public class PwnService {
         issueService.addScanIssue(issue);
     }
 
-    public void sendToSpider(URL url) {
-        toolService.sendToSpider(url);
+    public List<RepeaterItem> getRepeaterItems() {
+        return repeaterService.getItems();
     }
 
-    public void sendToIntruder(String host, int port, boolean useHttps, byte[] request) {
-        toolService.sendToIntruder(host, port, useHttps, request);
+    public RepeaterItem getRepeaterItem(int id) {
+        return repeaterService.getItem(id);
     }
 
-    public void sendToRepeater(String host, int port, boolean useHttps, byte[] request, String tabName) {
-        toolService.sendToRepeater(host, port, useHttps, request, tabName);
+    public int createRepeaterItem(String name, String requestBase64) {
+        return repeaterService.createItem(name, requestBase64);
+    }
+
+    public boolean updateRepeaterItem(int id, String name, String requestBase64) {
+        return repeaterService.updateItem(id, name, requestBase64);
+    }
+
+    public boolean deleteRepeaterItem(int id) {
+        return repeaterService.deleteItem(id);
+    }
+
+    public RepeaterResponse sendRepeaterItem(int id) {
+        RepeaterResponse resp = repeaterService.sendItem(id);
+        if (resp == null) {
+            throw new IllegalArgumentException("Repeater item not found");
+        }
+        return resp;
     }
 
     public void issueAlert(String message) {

@@ -46,8 +46,8 @@ public class RestServer {
             new SiteMapHandler(pwnService).register(this.server);
             new ProxyHandler(pwnService).register(this.server);
             new CookieJarHandler(pwnService).register(this.server);
-            new ToolHandler(pwnService).register(this.server);
             new AlertHandler(pwnService).register(this.server);
+            new RepeaterHandler(pwnService).register(this.server);
 
             this.server.start(this.config.getServerAddress(), this.config.getServerPort());
             this.pwnService.getLogging().logToOutput(
