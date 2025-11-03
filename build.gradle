@@ -13,13 +13,17 @@ repositories {
 dependencies {
     compileOnly files('/opt/burpsuite/burpsuite-pro.jar')
     implementation 'net.portswigger.burp.extensions:montoya-api:+'
-    implementation 'io.javalin:javalin:+'
-    implementation 'io.javalin.community.openapi:javalin-openapi-plugin:+'
-    implementation 'io.javalin.community.openapi:javalin-swagger-plugin:+'
+    implementation 'io.javalin:javalin:6.7.0'
+    implementation 'io.javalin.community.openapi:javalin-openapi-plugin:6.7.0'
+    implementation 'io.javalin.community.openapi:javalin-swagger-plugin:6.7.0'
+    //implementation 'io.javalin:javalin:+'
+    //implementation 'io.javalin.community.openapi:javalin-openapi-plugin:+'
+    //implementation 'io.javalin.community.openapi:javalin-swagger-plugin:+'
     implementation 'com.google.code.gson:gson:+'
     implementation 'org.slf4j:slf4j-api:+'
     implementation 'org.webjars:swagger-ui:+'
-    annotationProcessor 'io.javalin.community.openapi:openapi-annotation-processor:+'
+    annotationProcessor 'io.javalin.community.openapi:openapi-annotation-processor:6.7.0'
+    //annotationProcessor 'io.javalin.community.openapi:openapi-annotation-processor:+'
 }
 
 java {
