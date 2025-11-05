@@ -6,6 +6,7 @@ import com.pwn_burp.api.models.*;
 import io.javalin.Javalin;
 import io.javalin.http.*;
 import io.javalin.openapi.*;
+import java.util.Base64;
 
 public class ProxyHandler {
     private final PwnService pwnService;
@@ -17,6 +18,8 @@ public class ProxyHandler {
 
     public void register(Javalin server) {
         server.get("/proxyhistory", this::getProxyHistory);
+        server.get("/proxyhistory/{url}", this::getProxyHistoryByUrl);
+        server.put("/proxyhistory/{id}", this::updateProxyHistoryEntry);
         server.post("/proxy/intercept/enable", this::enableProxyIntercept);
         server.post("/proxy/intercept/disable", this::disableProxyIntercept);
         server.get("/proxy/listeners", this::getProxyListeners);
@@ -31,12 +34,92 @@ public class ProxyHandler {
             path = "/proxyhistory",
             methods = {HttpMethod.GET},
             responses = {
-                    @OpenApiResponse(status = "200", description = "List of proxy history entries", content = {@OpenApiContent(type = "application/json")})
+                @OpenApiResponse(
+                    status = "200",
+                    description = "List of proxy history entries",
+                    content = {
+                        @OpenApiContent(
+                            from = ProxyHistoryMessage[].class,
+                            mimeType = "application/json",
+                            example = "[{\n" +
+                                      "  \"request\": \"R0VUIC9hcGkvcGluZyBIVFRQLzEuMVxyXG5Ib3N0OiBleGFtcGxlLmNvbVxyXG5Vc2VyLUFnZW50OiBQV04vMS4wXHJcbkFjY2VwdDogYXBwbGljYXRpb24vanNvblxyXG5cclxu\",\n" +
+                                      "  \"response\": \"SFRUUC8xLjEgMjAwIE9LXHJcbkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvblxyXG5Db250ZW50LUxlbmd0aDogMjFcbkRhdGU6IFdlZCwgMzAgSnVsIDIwMjUgMTY6MDA6MDAgR01UXHJcbkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvblxyXG5cclxueyJtZXNzYWdlIjogIlBPTkcifQ==\",\n" +
+                                      "  \"highlight\": \"BLUE\",\n" +
+                                      "  \"comment\": \"Example proxy history entry\",\n" +
+                                      "  \"http_service\": {\n" +
+                                      "    \"host\": \"example.com\",\n" +
+                                      "    \"port\": 443,\n" +
+                                      "    \"protocol\": \"https\"\n" +
+                                      "  }\n" +
+                                      "}]"
+                        )
+                    }
+                )
             }
     )
     private void getProxyHistory(Context ctx) {
         ctx.status(200);
-        ctx.json(pwnService.getProxyHistory());
+        ctx.json(pwnService.getProxyHistory(""));
+    }
+
+    @OpenApi(
+            summary = "Get proxy history entries for a specific Base64 encoded URL",
+            operationId = "getProxyHistoryByUrl",
+            path = "/proxyhistory/{url}",
+            methods = {HttpMethod.GET},
+            pathParams = {@OpenApiParam(name = "url", description = "Base64-encoded URL prefix", required = true)},
+            responses = {
+                @OpenApiResponse(
+                    status = "200",
+                    description = "List of proxy history entries",
+                    content = {
+                        @OpenApiContent(
+                            from = ProxyHistoryMessage[].class,
+                            mimeType = "application/json",
+                            example = "[{\n" +
+                                      "  \"request\": \"R0VUIC9hcGkvcGluZyBIVFRQLzEuMVxyXG5Ib3N0OiBleGFtcGxlLmNvbVxyXG5Vc2VyLUFnZW50OiBQV04vMS4wXHJcbkFjY2VwdDogYXBwbGljYXRpb24vanNvblxyXG5cclxu\",\n" +
+                                      "  \"response\": \"SFRUUC8xLjEgMjAwIE9LXHJcbkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvblxyXG5Db250ZW50LUxlbmd0aDogMjFcbkRhdGU6IFdlZCwgMzAgSnVsIDIwMjUgMTY6MDA6MDAgR01UXHJcbkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvblxyXG5cclxueyJtZXNzYWdlIjogIlBPTkcifQ==\",\n" +
+                                      "  \"highlight\": \"BLUE\",\n" +
+                                      "  \"comment\": \"Example proxy history entry\",\n" +
+                                      "  \"http_service\": {\n" +
+                                      "    \"host\": \"example.com\",\n" +
+                                      "    \"port\": 443,\n" +
+                                      "    \"protocol\": \"https\"\n" +
+                                      "  }\n" +
+                                      "}]"
+                        )
+                    }
+                )
+            }
+    )
+    private void getProxyHistoryByUrl(Context ctx) {
+        String url = new String(Base64.getDecoder().decode(ctx.pathParam("url") != null ? ctx.pathParam("url") : ""));
+        ctx.status(200);
+        ctx.json(pwnService.getProxyHistory(url));
+    }
+
+    @OpenApi(
+        summary = "Update annotations for a proxy history entry",
+        operationId = "updateProxyHistoryEntry",
+        path = "/proxyhistory/{id}",
+        methods = {HttpMethod.PUT},
+        pathParams = {@OpenApiParam(name = "id", description = "ID of the proxy history entry", required = true)},
+        requestBody = @OpenApiRequestBody(content = {@OpenApiContent(from = ProxyHistoryMessage.class)}),
+        responses = {
+            @OpenApiResponse(status = "200", description = "Annotation updated successfully", content = {@OpenApiContent(from = ApiResponse.class)}),
+            @OpenApiResponse(status = "400", description = "Invalid parameters", content = {@OpenApiContent(from = ApiResponse.class)})
+        }
+    )
+    private void updateProxyHistoryEntry(Context ctx) {
+        ProxyHistoryMessage msg = gson.fromJson(ctx.body(), ProxyHistoryMessage.class);
+        if (msg == null || msg.getId() < 0 || msg.getComment() == null) {
+            ctx.status(400);
+            ctx.json(pwnService.apiError("parameters", "Invalid parameters: index must be non-negative and notes must be provided"));
+            return;
+        }
+        pwnService.updateProxyHistoryEntry(msg.getId(), msg.getComment(), msg.getHighlight());
+        ctx.status(200);
+        ctx.json(new ApiResponse("status", "Annotation updated successfully for proxy history entry at index " + msg.getId()));
     }
 
     @OpenApi(

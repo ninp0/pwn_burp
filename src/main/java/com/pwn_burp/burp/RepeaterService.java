@@ -86,6 +86,7 @@ public class RepeaterService {
         return resp;
     }
 
+    @SuppressWarnings("deprecation")
     private HttpRequest createHttpRequest(String requestBase64) {
         byte[] requestBytes;
         try {

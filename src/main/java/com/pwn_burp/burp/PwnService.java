@@ -76,8 +76,12 @@ public class PwnService {
         return scanService.generateScanReport(host, reportType);
     }
 
-    public String getProxyHistory() {
-        return proxyService.getProxyHistory();
+    public String getProxyHistory(String urlPrefix) {
+        return proxyService.getProxyHistory(urlPrefix);
+    }
+
+    public void updateProxyHistoryEntry(int id, String notes, String color) {
+        proxyService.updateProxyHistoryEntry(id, notes, color);
     }
 
     public void setProxyInterceptionEnabled(boolean enabled) {

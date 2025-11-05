@@ -2,14 +2,23 @@ package com.pwn_burp.burp;
 
 import burp.*;
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.core.Annotations;
+import burp.api.montoya.core.ByteArray;
+import burp.api.montoya.core.HighlightColor;
+import burp.api.montoya.http.HttpService;
+import burp.api.montoya.http.message.requests.HttpRequest;
+import burp.api.montoya.http.message.responses.HttpResponse;
+import burp.api.montoya.http.message.HttpRequestResponse;
+import burp.api.montoya.proxy.Proxy;
+import burp.api.montoya.proxy.ProxyHttpRequestResponse;
 import com.google.gson.*;
 import com.pwn_burp.api.models.ProxyListener;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
+import com.pwn_burp.api.models.ProxyHistoryMessage;
+import java.util.*;
 
 public class ProxyService {
     private final MontoyaApi api;
+    private final Map<Integer, ProxyHistoryMessage> items = new HashMap<>();
     private final IBurpExtenderCallbacks callbacks;
     private final Gson gson = new Gson();
 
@@ -21,17 +30,59 @@ public class ProxyService {
         }
     }
 
-    public String getProxyHistory() {
-        JsonArray history = new JsonArray();
+    public String getProxyHistory(String urlPrefix) {
+        JsonArray maps = new JsonArray();
         api.proxy().history().forEach(item -> {
-            JsonObject obj = new JsonObject();
-            String requestBase64 = item.request() != null ? Base64.getEncoder().encodeToString(item.request().toByteArray().getBytes()) : null;
-            obj.addProperty("request", requestBase64);
-            String responseBase64 = item.response() != null ? Base64.getEncoder().encodeToString(item.response().toByteArray().getBytes()) : null;
-            obj.addProperty("response", responseBase64);
-            history.add(obj);
+            if (urlPrefix.isEmpty() || (item.request() != null && item.request().url() != null && item.request().url().startsWith(urlPrefix))) {
+                JsonObject obj = new JsonObject();
+
+                Integer id = item.id() - 1; // Adjusting to zero-based index
+                obj.addProperty("id", id != null ? id : -1);
+
+                String requestBase64 = item.request() != null ? Base64.getEncoder().encodeToString(item.request().toByteArray().getBytes()) : null;
+                obj.addProperty("request", requestBase64);
+
+                String responseBase64 = item.response() != null ? Base64.getEncoder().encodeToString(item.response().toByteArray().getBytes()) : null;
+                obj.addProperty("response", responseBase64);
+
+                String highlight = item.annotations() != null && item.annotations().highlightColor() != null ? item.annotations().highlightColor().toString() : "";
+                obj.addProperty("highlight", highlight);
+
+                String comment = item.annotations() != null && item.annotations().notes() != null ? item.annotations().notes() : "";
+                obj.addProperty("comment", comment);
+
+                JsonObject serviceObj = new JsonObject();
+                HttpService httpService = item.httpService();
+                serviceObj.addProperty("host", httpService != null && httpService.host() != null ? httpService.host() : "");
+                serviceObj.addProperty("port", httpService != null ? httpService.port() : 0);
+                serviceObj.addProperty("protocol", httpService != null ? (httpService.secure() ? "https" : "http") : "");
+                obj.add("http_service", serviceObj);
+                maps.add(obj);
+            }
         });
-        return history.toString();
+
+        return maps.toString();
+    }
+
+    public void updateProxyHistoryEntry(int id, String notes, String color) {
+        List<ProxyHttpRequestResponse> history = api.proxy().history();
+        if (id < 0 || id > history.size()) {
+            api.logging().logToError("Invalid proxy history id: " + id);
+            return;
+        }
+        ProxyHttpRequestResponse entry = history.get(id);
+        HighlightColor hl = HighlightColor.NONE;
+        if (color != null) {
+            try {
+                hl = HighlightColor.valueOf(color.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                api.logging().logToError("Invalid highlight color: " + color + ". Using NONE.");
+                hl = HighlightColor.NONE;
+            }
+        }
+        Annotations annotations = entry.annotations();
+        annotations.setNotes(notes);
+        annotations.setHighlightColor(hl);
     }
 
     public void setProxyInterceptionEnabled(boolean enabled) {
@@ -58,7 +109,7 @@ public class ProxyService {
                 } else if ("loopback_only".equals(listenMode)) {
                     bindAddress = "127.0.0.1";
                 } else {
-                    bindAddress = listenerJson.get("bind_address").getAsString();
+                    bindAddress = listenerJson.get("bindAddress").getAsString();
                 }
                 int port = listenerJson.get("listener_port").getAsInt();
                 boolean enabled = listenerJson.get("running").getAsBoolean();
@@ -85,7 +136,7 @@ public class ProxyService {
                 mode = "loopback_only";
             } else {
                 mode = "specific_address";
-                newListener.addProperty("bind_address", bindAddress);
+                newListener.addProperty("bindAddress", bindAddress);
             }
             newListener.addProperty("listen_mode", mode);
             newListener.addProperty("listener_port", port);
@@ -118,7 +169,7 @@ public class ProxyService {
                 mode = "loopback_only";
             } else {
                 mode = "specific_address";
-                listener.addProperty("bind_address", bindAddress);
+                listener.addProperty("bindAddress", bindAddress);
             }
             listener.addProperty("listen_mode", mode);
             listener.addProperty("listener_port", port);
