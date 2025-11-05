@@ -5,7 +5,7 @@ import com.google.gson.annotations.SerializedName;
 public class ProxyListener {
     @SerializedName("id")
     private final String id; // Unique identifier for the listener (e.g., bind address + port)
-    @SerializedName("bind_address")
+    @SerializedName("bindAddress")
     private final String bindAddress;
     @SerializedName("port")
     private final int port;
