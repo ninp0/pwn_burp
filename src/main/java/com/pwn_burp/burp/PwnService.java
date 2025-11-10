@@ -124,6 +124,10 @@ public class PwnService {
         siteMapService.addToSiteMap(message);
     }
 
+    public void updateSiteMap(SiteMapMessage message) {
+        siteMapService.updateSiteMap(message);
+    }
+
     public AuditIssue[] getScanIssues(String url) {
         return issueService.getScanIssues(url);
     }

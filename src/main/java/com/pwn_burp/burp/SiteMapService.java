@@ -92,6 +92,50 @@ public class SiteMapService {
         }
     }
 
+    public void updateSiteMap(SiteMapMessage message) {
+        if (message == null || message.getRequest() == null) {
+	    api.logging().logToError("Invalid SiteMapMessage: request is required for update");
+	    throw new IllegalArgumentException("SiteMapMessage and request cannot be null for update");
+	}
+
+	try {
+	    // Decode Base64 request
+	    byte[] requestBytes = Base64.getDecoder().decode(message.getRequest());
+	    ByteArray requestByteArray = ByteArray.byteArray(requestBytes);
+
+	    // Find existing entry by matching request bytes
+	    Optional<HttpRequestResponse> existingEntryOpt = api.siteMap().requestResponses().stream()
+		.filter(item -> item.request() != null && item.request().toByteArray().equals(requestByteArray))
+		.findFirst();
+
+	    if (existingEntryOpt.isPresent()) {
+		HttpRequestResponse existingEntry = existingEntryOpt.get();
+		String notes = message.getComment();
+                HighlightColor hl = HighlightColor.NONE;
+		String color = message.getHighlight();
+		try {
+		  hl = HighlightColor.valueOf(color.toUpperCase());
+		} catch (IllegalArgumentException e) {
+		  api.logging().logToError("Invalid highlight color: " + color + ". Using NONE.");
+		  hl = HighlightColor.NONE;
+		}
+		// Update annotations
+		Annotations annotations = existingEntry.annotations();
+                annotations.setNotes(message.getComment());
+		annotations.setHighlightColor(hl);
+	    } else {
+		api.logging().logToError("No existing sitemap entry found for the provided request");
+		throw new RuntimeException("No existing sitemap entry found for the provided request");
+	    }
+	} catch (IllegalArgumentException e) {
+	    api.logging().logToError("Failed to decode Base64 or create request/response: " + e.getMessage());
+	    throw new RuntimeException("Failed to update sitemap entry", e);
+	} catch (Exception e) {
+	    api.logging().logToError("Failed to update sitemap entry: " + e.getMessage());
+	    throw new RuntimeException("Failed to update sitemap entry", e);
+        }
+    }
+
     public String getSiteMap(String urlPrefix) {
         JsonArray maps = new JsonArray();
         api.siteMap().requestResponses().forEach(item -> {
