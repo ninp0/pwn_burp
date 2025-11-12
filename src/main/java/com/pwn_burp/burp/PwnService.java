@@ -80,8 +80,16 @@ public class PwnService {
         return proxyService.getProxyHistory(urlPrefix);
     }
 
+    public String getWebSocketHistory(String urlPrefix) {
+        return proxyService.getWebSocketHistory(urlPrefix);
+    }
+
     public void updateProxyHistoryEntry(int id, String notes, String color) {
         proxyService.updateProxyHistoryEntry(id, notes, color);
+    }
+
+    public void updateWebSocketHistoryEntry(int id, String notes, String color) {
+        proxyService.updateWebSocketHistoryEntry(id, notes, color);
     }
 
     public void setProxyInterceptionEnabled(boolean enabled) {

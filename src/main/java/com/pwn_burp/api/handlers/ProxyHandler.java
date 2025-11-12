@@ -17,9 +17,11 @@ public class ProxyHandler {
     }
 
     public void register(Javalin server) {
-        server.get("/proxyhistory", this::getProxyHistory);
-        server.get("/proxyhistory/{url}", this::getProxyHistoryByUrl);
-        server.put("/proxyhistory/{id}", this::updateProxyHistoryEntry);
+        server.get("/proxy/history", this::getProxyHistory);
+        server.get("/websocket/history", this::getWebSocketHistory);
+        server.get("/proxy/history/{url}", this::getProxyHistoryByUrl);
+        server.put("/proxy/history/{id}", this::updateProxyHistoryEntry);
+        server.put("/websocket/history/{id}", this::updateWebSocketHistoryEntry);
         server.post("/proxy/intercept/enable", this::enableProxyIntercept);
         server.post("/proxy/intercept/disable", this::disableProxyIntercept);
         server.get("/proxy/listeners", this::getProxyListeners);
@@ -31,7 +33,7 @@ public class ProxyHandler {
     @OpenApi(
             summary = "Get proxy history",
             operationId = "getProxyHistory",
-            path = "/proxyhistory",
+            path = "/proxy/history",
             methods = {HttpMethod.GET},
             responses = {
                 @OpenApiResponse(
@@ -42,6 +44,7 @@ public class ProxyHandler {
                             from = ProxyHistoryMessage[].class,
                             mimeType = "application/json",
                             example = "[{\n" +
+                                      "  \"id\": 0,\n" +
                                       "  \"request\": \"R0VUIC9hcGkvcGluZyBIVFRQLzEuMVxyXG5Ib3N0OiBleGFtcGxlLmNvbVxyXG5Vc2VyLUFnZW50OiBQV04vMS4wXHJcbkFjY2VwdDogYXBwbGljYXRpb24vanNvblxyXG5cclxu\",\n" +
                                       "  \"response\": \"SFRUUC8xLjEgMjAwIE9LXHJcbkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvblxyXG5Db250ZW50LUxlbmd0aDogMjFcbkRhdGU6IFdlZCwgMzAgSnVsIDIwMjUgMTY6MDA6MDAgR01UXHJcbkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvblxyXG5cclxueyJtZXNzYWdlIjogIlBPTkcifQ==\",\n" +
                                       "  \"highlight\": \"BLUE\",\n" +
@@ -63,9 +66,41 @@ public class ProxyHandler {
     }
 
     @OpenApi(
+	    summary = "Get WebSocket history",
+	    operationId = "getWebSocketHistory",
+	    path = "/websocket/history",
+	    methods = {HttpMethod.GET},
+	    responses = {
+		@OpenApiResponse(
+		    status = "200",
+		    description = "List of WebSocket history entries",
+		    content = {
+			@OpenApiContent(
+			    from = WebSocketHistoryMessage[].class,
+			    mimeType = "application/json",
+			    example = "[{\n" +
+				      "  \"id\": 0,\n" +
+			              "  \"url\": \"wss://example.com/socket\",\n" +
+                                      "  \"direction\": \"to_server\",\n" +
+				      "  \"message\": \"SGVsbG8gd29ybGQh\",\n" +
+				      "  \"highlight\": \"GREEN\",\n" +
+				      "  \"comment\": \"Example WebSocket message\",\n" +
+				      "  \"web_socket_id\": 1\n" +
+				      "}]"
+			)
+		    }
+		)
+	    }
+    )
+    private void getWebSocketHistory(Context ctx) {
+	ctx.status(200);
+	ctx.json(pwnService.getWebSocketHistory(""));
+    }
+
+    @OpenApi(
             summary = "Get proxy history entries for a specific Base64 encoded URL",
             operationId = "getProxyHistoryByUrl",
-            path = "/proxyhistory/{url}",
+            path = "/proxy/history/{url}",
             methods = {HttpMethod.GET},
             pathParams = {@OpenApiParam(name = "url", description = "Base64-encoded URL prefix", required = true)},
             responses = {
@@ -101,7 +136,7 @@ public class ProxyHandler {
     @OpenApi(
         summary = "Update annotations for a proxy history entry",
         operationId = "updateProxyHistoryEntry",
-        path = "/proxyhistory/{id}",
+        path = "/proxy/history/{id}",
         methods = {HttpMethod.PUT},
         pathParams = {@OpenApiParam(name = "id", description = "ID of the proxy history entry", required = true)},
         requestBody = @OpenApiRequestBody(content = {@OpenApiContent(from = ProxyHistoryMessage.class)}),
@@ -120,6 +155,30 @@ public class ProxyHandler {
         pwnService.updateProxyHistoryEntry(msg.getId(), msg.getComment(), msg.getHighlight());
         ctx.status(200);
         ctx.json(new ApiResponse("status", "Annotation updated successfully for proxy history entry at index " + msg.getId()));
+    }
+
+    @OpenApi(
+	summary = "Update annotations for a WebSocket history entry",
+	operationId = "updateWebSocketHistoryEntry",
+	path = "/websocket/history/{id}",
+	methods = {HttpMethod.PUT},
+	pathParams = {@OpenApiParam(name = "id", description = "ID of the WebSocket history entry", required = true)},
+	requestBody = @OpenApiRequestBody(content = {@OpenApiContent(from = WebSocketHistoryMessage.class)}),
+	responses = {
+	    @OpenApiResponse(status = "200", description = "Annotation updated successfully", content = {@OpenApiContent(from = ApiResponse.class)}),
+	    @OpenApiResponse(status = "400", description = "Invalid parameters", content = {@OpenApiContent(from = ApiResponse.class)})
+	}
+    )
+    private void updateWebSocketHistoryEntry(Context ctx) {
+	WebSocketHistoryMessage msg = gson.fromJson(ctx.body(), WebSocketHistoryMessage.class);
+	if (msg == null || msg.getId() < 0 || msg.getComment() == null) {
+	    ctx.status(400);
+	    ctx.json(pwnService.apiError("parameters", "Invalid parameters: index must be non-negative and notes must be provided"));
+	    return;
+	}
+	pwnService.updateWebSocketHistoryEntry(msg.getId(), msg.getComment(), msg.getHighlight());
+	ctx.status(200);
+	ctx.json(new ApiResponse("status", "Annotation updated successfully for WebSocket history entry at index " + msg.getId()));
     }
 
     @OpenApi(
