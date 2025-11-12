@@ -11,6 +11,7 @@ import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.proxy.Proxy;
 import burp.api.montoya.proxy.ProxyHttpRequestResponse;
+import burp.api.montoya.proxy.ProxyWebSocketMessage;
 import com.google.gson.*;
 import com.pwn_burp.api.models.ProxyListener;
 import com.pwn_burp.api.models.ProxyHistoryMessage;
@@ -64,6 +65,38 @@ public class ProxyService {
         return maps.toString();
     }
 
+    public String getWebSocketHistory(String urlPrefix) {
+        JsonArray maps = new JsonArray();
+        api.proxy().webSocketHistory().forEach(item -> {
+            // Montoya API provides payload() (ByteArray) for the message contents and opcode()
+            JsonObject obj = new JsonObject();
+
+            int id = item.id(); // Use Montoya's id directly
+            obj.addProperty("id", id);
+
+            obj.addProperty("web_socket_id", item.webSocketId());
+            obj.addProperty("direction", item.direction() != null ? item.direction().toString() : "");
+
+            String payloadBase64 = item.payload() != null
+                    ? Base64.getEncoder().encodeToString(item.payload().getBytes())
+                    : null;
+            obj.addProperty("payload", payloadBase64);
+
+            String highlight = (item.annotations() != null && item.annotations().highlightColor() != null)
+                    ? item.annotations().highlightColor().toString()
+                    : "";
+            obj.addProperty("highlight", highlight);
+
+            String comment = (item.annotations() != null && item.annotations().notes() != null)
+                    ? item.annotations().notes()
+                    : "";
+            obj.addProperty("comment", comment);
+
+            maps.add(obj);
+        });
+        return maps.toString();
+    }
+ 
     public void updateProxyHistoryEntry(int id, String notes, String color) {
         List<ProxyHttpRequestResponse> history = api.proxy().history();
         if (id < 0 || id > history.size()) {
@@ -71,6 +104,27 @@ public class ProxyService {
             return;
         }
         ProxyHttpRequestResponse entry = history.get(id);
+        HighlightColor hl = HighlightColor.NONE;
+        if (color != null) {
+            try {
+                hl = HighlightColor.valueOf(color.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                api.logging().logToError("Invalid highlight color: " + color + ". Using NONE.");
+                hl = HighlightColor.NONE;
+            }
+        }
+        Annotations annotations = entry.annotations();
+        annotations.setNotes(notes);
+        annotations.setHighlightColor(hl);
+    }
+
+    public void updateWebSocketHistoryEntry(int id, String notes, String color) {
+        List<ProxyWebSocketMessage> history = api.proxy().webSocketHistory();
+        if (id < 0 || id > history.size()) {
+            api.logging().logToError("Invalid proxy history id: " + id);
+            return;
+        }
+        ProxyWebSocketMessage entry = history.get(id);
         HighlightColor hl = HighlightColor.NONE;
         if (color != null) {
             try {
