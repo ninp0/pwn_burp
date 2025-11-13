@@ -65,6 +65,27 @@ public class ProxyService {
         return maps.toString();
     }
 
+    public void updateProxyHistoryEntry(int id, String notes, String color) {
+        List<ProxyHttpRequestResponse> history = api.proxy().history();
+        if (id < 0 || id >= history.size()) {
+            api.logging().logToError("Invalid proxy history id: " + id);
+            return;
+        }
+        ProxyHttpRequestResponse entry = history.get(id);
+        HighlightColor hl = HighlightColor.NONE;
+        if (color != null) {
+            try {
+                hl = HighlightColor.valueOf(color.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                api.logging().logToError("Invalid highlight color: " + color + ". Using NONE.");
+                hl = HighlightColor.NONE;
+            }
+        }
+        Annotations annotations = entry.annotations();
+        annotations.setNotes(notes);
+        annotations.setHighlightColor(hl);
+    }
+
     public String getWebSocketHistory(String urlPrefix) {
         JsonArray maps = new JsonArray();
         api.proxy().webSocketHistory().forEach(item -> {
@@ -76,6 +97,20 @@ public class ProxyService {
 
             obj.addProperty("web_socket_id", item.webSocketId());
             obj.addProperty("direction", item.direction() != null ? item.direction().toString() : "");
+
+            // URL retrieval
+            /*
+            String wsUrl = "";
+            try {
+                if (item.webSocket() != null && item.webSocket().handshakeRequest() != null) {
+                    wsUrl = item.webSocket().handshakeRequest().url();
+                } else if (item.webSocket() != null && item.webSocket().httpService() != null) {
+                    HttpService hs = item.webSocket().httpService();
+                    wsUrl = (hs.secure() ? "wss" : "ws") + "://" + hs.host() + (hs.port() > 0 ? ":" + hs.port() : "");
+                }
+            } catch (Exception ignored) {}
+            obj.addProperty("url", wsUrl);
+            */
 
             String payloadBase64 = item.payload() != null
                     ? Base64.getEncoder().encodeToString(item.payload().getBytes())
@@ -97,30 +132,9 @@ public class ProxyService {
         return maps.toString();
     }
  
-    public void updateProxyHistoryEntry(int id, String notes, String color) {
-        List<ProxyHttpRequestResponse> history = api.proxy().history();
-        if (id < 0 || id > history.size()) {
-            api.logging().logToError("Invalid proxy history id: " + id);
-            return;
-        }
-        ProxyHttpRequestResponse entry = history.get(id);
-        HighlightColor hl = HighlightColor.NONE;
-        if (color != null) {
-            try {
-                hl = HighlightColor.valueOf(color.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                api.logging().logToError("Invalid highlight color: " + color + ". Using NONE.");
-                hl = HighlightColor.NONE;
-            }
-        }
-        Annotations annotations = entry.annotations();
-        annotations.setNotes(notes);
-        annotations.setHighlightColor(hl);
-    }
-
     public void updateWebSocketHistoryEntry(int id, String notes, String color) {
         List<ProxyWebSocketMessage> history = api.proxy().webSocketHistory();
-        if (id < 0 || id > history.size()) {
+        if (id < 0 || id >= history.size()) {
             api.logging().logToError("Invalid proxy history id: " + id);
             return;
         }
