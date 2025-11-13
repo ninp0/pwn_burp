@@ -13,8 +13,8 @@ public class WebSocketHistoryMessage {
     @SerializedName("direction")
     private final String direction;
 
-    @SerializedName("message")
-    private final String message; // Base64-encoded HTTP response
+    @SerializedName("payload")
+    private final String payload; // Base64-encoded HTTP response
 
     @SerializedName("highlight")
     private String highlight;
@@ -25,11 +25,11 @@ public class WebSocketHistoryMessage {
     @SerializedName("web_socket_id")
     private final int webSocketId;
 
-    public WebSocketHistoryMessage(int id, String url, String direction, String message, String highlight, String comment, int web_socket_id) {
+    public WebSocketHistoryMessage(int id, String url, String direction, String payload, String highlight, String comment, int web_socket_id) {
         this.id = id;
         this.url = url;
         this.direction = direction;
-        this.message = message;
+        this.payload = payload;
         this.highlight = highlight;
         this.comment = comment;
         this.webSocketId = web_socket_id;
@@ -63,7 +63,7 @@ public class WebSocketHistoryMessage {
 	return id == that.id &&
 	       Objects.equals(url, that.url) &&
 	       Objects.equals(direction, that.direction) &&
-	       Objects.equals(message, that.message) &&
+	       Objects.equals(payload, that.payload) &&
 	       Objects.equals(highlight, that.highlight) &&
 	       Objects.equals(comment, that.comment) &&
 	       webSocketId == that.webSocketId;
@@ -75,7 +75,7 @@ public class WebSocketHistoryMessage {
                "  id=" + id + '\'' +
 	       ", url='" + url + '\'' +
 	       ", direction='" + direction + '\'' +
-	       ", message='" + message + '\'' +
+	       ", payload='" + payload + '\'' +
 	       ", highlight='" + highlight + '\'' +
 	       ", comment='" + comment + '\'' +
 	       ", web_socket_id=" + webSocketId +
