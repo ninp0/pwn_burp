@@ -127,7 +127,7 @@ public class SiteMapService {
                 annotations.setNotes(message.getComment());
 		annotations.setHighlightColor(hl);
 	    } else {
-		api.logging().logToError("No existing sitemap entry found for the provided request" + message.getRequest());
+		api.logging().logToError("No existing sitemap entry found for the provided request: " + message.getRequest());
 		// throw new RuntimeException("No existing sitemap entry found for the provided request");
 	    }
 	} catch (IllegalArgumentException e) {
