@@ -92,8 +92,8 @@ public class ProxyService {
             // Montoya API provides payload() (ByteArray) for the message contents and opcode()
             JsonObject obj = new JsonObject();
 
-            int id = item.id(); // Use Montoya's id directly
-            obj.addProperty("id", id);
+            Integer id = item.id() - 1; // Adjusting to zero-based index
+            obj.addProperty("id", id != null ? id : -1);
 
             obj.addProperty("web_socket_id", item.webSocketId());
             obj.addProperty("direction", item.direction() != null ? item.direction().toString() : "");
