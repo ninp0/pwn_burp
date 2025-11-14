@@ -6,6 +6,7 @@ import burp.api.montoya.core.Annotations;
 import burp.api.montoya.core.ByteArray;
 import burp.api.montoya.core.HighlightColor;
 import burp.api.montoya.http.HttpService;
+import burp.api.montoya.http.handler.TimingData;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.http.message.HttpRequestResponse;
@@ -15,6 +16,8 @@ import burp.api.montoya.proxy.ProxyWebSocketMessage;
 import com.google.gson.*;
 import com.pwn_burp.api.models.ProxyListener;
 import com.pwn_burp.api.models.ProxyHistoryMessage;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 public class ProxyService {
@@ -33,23 +36,46 @@ public class ProxyService {
 
     public String getProxyHistory(String urlPrefix) {
         JsonArray maps = new JsonArray();
-        api.proxy().history().forEach(item -> {
+        List<ProxyHttpRequestResponse> history = api.proxy().history();
+        for (int i = 0; i < history.size(); i++) {
+            ProxyHttpRequestResponse item = history.get(i);
             if (urlPrefix.isEmpty() || (item.request() != null && item.request().url() != null && item.request().url().startsWith(urlPrefix))) {
                 JsonObject obj = new JsonObject();
 
-                Integer id = item.id() - 1; // Adjusting to zero-based index
-                obj.addProperty("id", id != null ? id : -1);
+                obj.addProperty("id", i); // zero-based list index
 
-                String requestBase64 = item.request() != null ? Base64.getEncoder().encodeToString(item.request().toByteArray().getBytes()) : null;
+                String requestBase64 = item.request() != null
+                        ? Base64.getEncoder().encodeToString(item.request().toByteArray().getBytes())
+                        : null;
                 obj.addProperty("request", requestBase64);
 
-                String responseBase64 = item.response() != null ? Base64.getEncoder().encodeToString(item.response().toByteArray().getBytes()) : null;
+                String responseBase64 = item.response() != null
+                        ? Base64.getEncoder().encodeToString(item.response().toByteArray().getBytes())
+                        : null;
                 obj.addProperty("response", responseBase64);
 
-                String highlight = item.annotations() != null && item.annotations().highlightColor() != null ? item.annotations().highlightColor().toString() : "";
+                TimingData td = item.timingData();
+                if (td != null) {
+                    Duration time_between_request_sent_and_start_of_response = td.timeBetweenRequestSentAndStartOfResponse();
+                    obj.addProperty("time_between_request_sent_and_start_of_response", time_between_request_sent_and_start_of_response.toMillis());
+                    Duration time_between_request_sent_and_end_of_response = td.timeBetweenRequestSentAndEndOfResponse();
+                    obj.addProperty("time_between_request_sent_and_end_of_response", time_between_request_sent_and_end_of_response.toMillis());
+                    ZonedDateTime timestamp = td.timeRequestSent();
+                    obj.addProperty("time_request_sent", timestamp.toString()); 
+                } else {
+                    obj.addProperty("time_between_request_sent_and_start_of_response", -1);
+                    obj.addProperty("time_between_request_sent_and_end_of_response", -1);
+                    obj.addProperty("time_request_sent", "");
+                }
+
+                String highlight = item.annotations() != null && item.annotations().highlightColor() != null
+                        ? item.annotations().highlightColor().toString()
+                        : "";
                 obj.addProperty("highlight", highlight);
 
-                String comment = item.annotations() != null && item.annotations().notes() != null ? item.annotations().notes() : "";
+                String comment = item.annotations() != null && item.annotations().notes() != null
+                        ? item.annotations().notes()
+                        : "";
                 obj.addProperty("comment", comment);
 
                 JsonObject serviceObj = new JsonObject();
@@ -60,8 +86,7 @@ public class ProxyService {
                 obj.add("http_service", serviceObj);
                 maps.add(obj);
             }
-        });
-
+        }
         return maps.toString();
     }
 
@@ -88,34 +113,45 @@ public class ProxyService {
 
     public String getWebSocketHistory(String urlPrefix) {
         JsonArray maps = new JsonArray();
-        api.proxy().webSocketHistory().forEach(item -> {
-            // Montoya API provides payload() (ByteArray) for the message contents and opcode()
+        List<ProxyWebSocketMessage> wsHistory = api.proxy().webSocketHistory();
+        for (int i = 0; i < wsHistory.size(); i++) {
+            ProxyWebSocketMessage item = wsHistory.get(i);
             JsonObject obj = new JsonObject();
 
-            Integer id = item.id() - 1; // Adjusting to zero-based index
-            obj.addProperty("id", id != null ? id : -1);
-
-            obj.addProperty("web_socket_id", item.webSocketId());
+            obj.addProperty("id", i); // zero-based list index
             obj.addProperty("direction", item.direction() != null ? item.direction().toString() : "");
 
-            // URL retrieval
-            /*
-            String wsUrl = "";
-            try {
-                if (item.webSocket() != null && item.webSocket().handshakeRequest() != null) {
-                    wsUrl = item.webSocket().handshakeRequest().url();
-                } else if (item.webSocket() != null && item.webSocket().httpService() != null) {
-                    HttpService hs = item.webSocket().httpService();
-                    wsUrl = (hs.secure() ? "wss" : "ws") + "://" + hs.host() + (hs.port() > 0 ? ":" + hs.port() : "");
-                }
-            } catch (Exception ignored) {}
-            obj.addProperty("url", wsUrl);
-            */
+            HttpRequest upgradeRequest = item.upgradeRequest();
+            if (upgradeRequest != null) {
+                String url = upgradeRequest.url();
+                obj.addProperty("url", url != null ? url : "");
+            } else {
+                obj.addProperty("url", "");
+            }
+            // String wsUrl = "";
+            // try {
+            //     if (item.webSocket() != null && item.webSocket().handshakeRequest() != null) {
+            //         wsUrl = item.webSocket().handshakeRequest().url();
+            //     } else if (item.webSocket() != null && item.webSocket().httpService() != null) {
+            //         HttpService hs = item.webSocket().httpService();
+            //         wsUrl = (hs.secure() ? "wss" : "ws") + "://" + hs.host() + (hs.port() > 0 ? ":" + hs.port() : "");
+            //     }
+            // } catch (Exception ignored) {}
+            // obj.addProperty("url", wsUrl);
+
+            ZonedDateTime time_payload_sent = item.time();
+	    obj.addProperty("time_payload_sent", time_payload_sent != null ? time_payload_sent.toString() : "");
 
             String payloadBase64 = item.payload() != null
                     ? Base64.getEncoder().encodeToString(item.payload().getBytes())
                     : null;
             obj.addProperty("payload", payloadBase64);
+
+            int listenerPort = item.listenerPort();
+            obj.addProperty("listener_port", listenerPort > 0 ? listenerPort : -1);
+
+            int webSocketId = item.webSocketId();
+            obj.addProperty("web_socket_id", webSocketId >= 0 ? webSocketId : -1);
 
             String highlight = (item.annotations() != null && item.annotations().highlightColor() != null)
                     ? item.annotations().highlightColor().toString()
@@ -128,10 +164,10 @@ public class ProxyService {
             obj.addProperty("comment", comment);
 
             maps.add(obj);
-        });
+        }
         return maps.toString();
     }
- 
+
     public void updateWebSocketHistoryEntry(int id, String notes, String color) {
         List<ProxyWebSocketMessage> history = api.proxy().webSocketHistory();
         if (id < 0 || id >= history.size()) {
