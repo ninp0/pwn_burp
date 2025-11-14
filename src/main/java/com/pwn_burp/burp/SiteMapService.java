@@ -145,8 +145,6 @@ public class SiteMapService {
             if (urlPrefix.isEmpty() || (item.request() != null && item.request().url() != null && item.request().url().startsWith(urlPrefix))) {
                 JsonObject obj = new JsonObject();
 
-                api.logging().logToOutput("SiteMapService: Processing item with URL: " + (item.request() != null ? item.request().url() : "null"));
-
                 Optional<TimingData> timingDataOpt = item.timingData();
                 if (timingDataOpt.isPresent()) {
                     TimingData td = timingDataOpt.get();
@@ -183,7 +181,6 @@ public class SiteMapService {
                 maps.add(obj);
             }
         });
-        api.logging().logToOutput("SiteMapService: Retrieved " + maps.toString());
         return maps.toString();
     }
 }

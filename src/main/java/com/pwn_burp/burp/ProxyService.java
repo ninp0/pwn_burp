@@ -128,16 +128,6 @@ public class ProxyService {
             } else {
                 obj.addProperty("url", "");
             }
-            // String wsUrl = "";
-            // try {
-            //     if (item.webSocket() != null && item.webSocket().handshakeRequest() != null) {
-            //         wsUrl = item.webSocket().handshakeRequest().url();
-            //     } else if (item.webSocket() != null && item.webSocket().httpService() != null) {
-            //         HttpService hs = item.webSocket().httpService();
-            //         wsUrl = (hs.secure() ? "wss" : "ws") + "://" + hs.host() + (hs.port() > 0 ? ":" + hs.port() : "");
-            //     }
-            // } catch (Exception ignored) {}
-            // obj.addProperty("url", wsUrl);
 
             ZonedDateTime time_payload_sent = item.time();
 	    obj.addProperty("time_payload_sent", time_payload_sent != null ? time_payload_sent.toString() : "");
