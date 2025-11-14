@@ -6,6 +6,7 @@ import burp.api.montoya.core.Annotations;
 import burp.api.montoya.core.ByteArray;
 import burp.api.montoya.core.HighlightColor;
 import burp.api.montoya.http.HttpService;
+import burp.api.montoya.http.handler.TimingData;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.http.message.HttpRequestResponse;
@@ -13,6 +14,8 @@ import burp.api.montoya.sitemap.SiteMap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.pwn_burp.api.models.SiteMapMessage;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -124,8 +127,8 @@ public class SiteMapService {
                 annotations.setNotes(message.getComment());
 		annotations.setHighlightColor(hl);
 	    } else {
-		api.logging().logToError("No existing sitemap entry found for the provided request");
-		throw new RuntimeException("No existing sitemap entry found for the provided request");
+		api.logging().logToError("No existing sitemap entry found for the provided request: " + message.getRequest());
+		// throw new RuntimeException("No existing sitemap entry found for the provided request");
 	    }
 	} catch (IllegalArgumentException e) {
 	    api.logging().logToError("Failed to decode Base64 or create request/response: " + e.getMessage());
@@ -143,6 +146,21 @@ public class SiteMapService {
                 JsonObject obj = new JsonObject();
 
                 api.logging().logToOutput("SiteMapService: Processing item with URL: " + (item.request() != null ? item.request().url() : "null"));
+
+                Optional<TimingData> timingDataOpt = item.timingData();
+                if (timingDataOpt.isPresent()) {
+                    TimingData td = timingDataOpt.get();
+                    Duration time_between_request_sent_and_start_of_response = td.timeBetweenRequestSentAndStartOfResponse();
+                    obj.addProperty("time_between_request_sent_and_start_of_response", time_between_request_sent_and_start_of_response.toMillis());
+                    Duration time_between_request_sent_and_end_of_response = td.timeBetweenRequestSentAndEndOfResponse();
+                    obj.addProperty("time_between_request_sent_and_end_of_response", time_between_request_sent_and_end_of_response.toMillis());
+                    ZonedDateTime timestamp = td.timeRequestSent();
+                    obj.addProperty("time_request_sent", timestamp.toString()); 
+                } else {
+                    obj.addProperty("time_between_request_sent_and_start_of_response", -1);
+                    obj.addProperty("time_between_request_sent_and_end_of_response", -1);
+                    obj.addProperty("time_request_sent", "");
+                }
 
                 String requestBase64 = item.request() != null ? Base64.getEncoder().encodeToString(item.request().toByteArray().getBytes()) : null;
                 obj.addProperty("request", requestBase64);
