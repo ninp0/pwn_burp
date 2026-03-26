@@ -11,6 +11,10 @@ import io.javalin.http.staticfiles.Location;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+
 public class RestServer {
     private final ConfigManager config;
     private final PwnService pwnService;
@@ -24,14 +28,34 @@ public class RestServer {
 
     public void start() {
         try {
-            this.server = Javalin.create(config -> {
-                config.registerPlugin(new OpenApiPlugin(openApiConfig -> {
+            this.server = Javalin.create(javalinConfig -> {
+                javalinConfig.registerPlugin(new OpenApiPlugin(openApiConfig -> {
                     openApiConfig.withDocumentationPath("/openapi.json");
                 }));
 
-                config.staticFiles.add(staticFileConfig -> {
+                javalinConfig.staticFiles.add(staticFileConfig -> {
                     staticFileConfig.directory = "/swagger-ui";
                     staticFileConfig.location = Location.CLASSPATH;
+                });
+
+                // === EXTENDED HTTP REQUEST TIMEOUTS ===
+                // Jetty's default idle timeout is only 30 seconds.
+                // This is the most common cause of "Idle timeout expired" errors
+                // on long-running endpoints (scans, proxy operations, etc.).
+                // We extend both the async timeout and the connector idle timeout
+                // to 10 minutes. Adjust the value if you need even longer requests.
+                long timeoutMs = 10 * 60 * 1000L; // 10 minutes
+
+                // Async timeout (used by ctx.future(), ctx.async(), etc.)
+                javalinConfig.http.asyncTimeout = timeoutMs;
+
+                // Jetty connection idle timeout (applies to all requests)
+                javalinConfig.jetty.modifyServer(jettyServer -> {
+                    for (Connector connector : jettyServer.getConnectors()) {
+                        if (connector instanceof ServerConnector) {
+                            ((ServerConnector) connector).setIdleTimeout(timeoutMs);
+                        }
+                    }
                 });
             });
 
