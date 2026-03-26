@@ -34,60 +34,107 @@ public class ProxyService {
         }
     }
 
-    public String getProxyHistory(String urlPrefix) {
+    /**
+     * RESILIENT, PAGINATED getProxyHistory (replaces the old version that caused 500s on large histories).
+     * - Hard-capped at 500 items per call (prevents OOM / HTTP 500s).
+     * - ALWAYS includes full Base64 request + response bodies + timing data + id.
+     * - Supports ?limit= & ?offset= query params.
+     * - Per-item try/catch so one bad entry never crashes the endpoint.
+     */
+    public String getProxyHistory(String urlPrefix, int limit, int offset) {
+        final int MAX_LIMIT = 500;
+        int effectiveLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
+        int effectiveOffset = Math.max(0, offset);
+
         JsonArray maps = new JsonArray();
-        List<ProxyHttpRequestResponse> history = api.proxy().history();
-        for (int i = 0; i < history.size(); i++) {
-            ProxyHttpRequestResponse item = history.get(i);
-            if (urlPrefix.isEmpty() || (item.request() != null && item.request().url() != null && item.request().url().startsWith(urlPrefix))) {
-                JsonObject obj = new JsonObject();
+        int processed = 0;
 
-                obj.addProperty("id", i); // zero-based list index
+        try {
+            List<ProxyHttpRequestResponse> history = api.proxy().history();
 
-                String requestBase64 = item.request() != null
-                        ? Base64.getEncoder().encodeToString(item.request().toByteArray().getBytes())
-                        : null;
-                obj.addProperty("request", requestBase64);
+            for (int i = 0; i < history.size(); i++) {
+                ProxyHttpRequestResponse item = history.get(i);
 
-                String responseBase64 = item.response() != null
-                        ? Base64.getEncoder().encodeToString(item.response().toByteArray().getBytes())
-                        : null;
-                obj.addProperty("response", responseBase64);
-
-                TimingData td = item.timingData();
-                if (td != null) {
-                    Duration time_between_request_sent_and_start_of_response = td.timeBetweenRequestSentAndStartOfResponse();
-                    obj.addProperty("time_between_request_sent_and_start_of_response", time_between_request_sent_and_start_of_response.toMillis());
-                    Duration time_between_request_sent_and_end_of_response = td.timeBetweenRequestSentAndEndOfResponse();
-                    obj.addProperty("time_between_request_sent_and_end_of_response", time_between_request_sent_and_end_of_response.toMillis());
-                    ZonedDateTime timestamp = td.timeRequestSent();
-                    obj.addProperty("time_request_sent", timestamp.toString()); 
-                } else {
-                    obj.addProperty("time_between_request_sent_and_start_of_response", -1);
-                    obj.addProperty("time_between_request_sent_and_end_of_response", -1);
-                    obj.addProperty("time_request_sent", "");
+                // Handle offset
+                if (processed < effectiveOffset) {
+                    processed++;
+                    continue;
                 }
 
-                String highlight = item.annotations() != null && item.annotations().highlightColor() != null
-                        ? item.annotations().highlightColor().toString()
-                        : "";
-                obj.addProperty("highlight", highlight);
+                // Stop once we hit the limit
+                if (maps.size() >= effectiveLimit) {
+                    break;
+                }
 
-                String comment = item.annotations() != null && item.annotations().notes() != null
-                        ? item.annotations().notes()
-                        : "";
-                obj.addProperty("comment", comment);
+                // URL prefix filter
+                if (!urlPrefix.isEmpty()) {
+                    String url = (item.request() != null) ? item.request().url() : null;
+                    if (url == null || !url.startsWith(urlPrefix)) {
+                        continue;
+                    }
+                }
 
-                JsonObject serviceObj = new JsonObject();
-                HttpService httpService = item.httpService();
-                serviceObj.addProperty("host", httpService != null && httpService.host() != null ? httpService.host() : "");
-                serviceObj.addProperty("port", httpService != null ? httpService.port() : 0);
-                serviceObj.addProperty("protocol", httpService != null ? (httpService.secure() ? "https" : "http") : "");
-                obj.add("http_service", serviceObj);
-                maps.add(obj);
+                try {
+                    JsonObject obj = new JsonObject();
+
+                    obj.addProperty("id", i); // zero-based list index (keeps original behavior)
+
+                    // Timing data
+                    TimingData td = item.timingData();
+                    if (td != null) {
+                        obj.addProperty("time_between_request_sent_and_start_of_response", td.timeBetweenRequestSentAndStartOfResponse().toMillis());
+                        obj.addProperty("time_between_request_sent_and_end_of_response", td.timeBetweenRequestSentAndEndOfResponse().toMillis());
+                        obj.addProperty("time_request_sent", td.timeRequestSent().toString());
+                    } else {
+                        obj.addProperty("time_between_request_sent_and_start_of_response", -1);
+                        obj.addProperty("time_between_request_sent_and_end_of_response", -1);
+                        obj.addProperty("time_request_sent", "");
+                    }
+
+                    // Full request/response bodies (ALWAYS included)
+                    String requestBase64 = item.request() != null
+                            ? Base64.getEncoder().encodeToString(item.request().toByteArray().getBytes()) : null;
+                    obj.addProperty("request", requestBase64);
+
+                    String responseBase64 = item.response() != null
+                            ? Base64.getEncoder().encodeToString(item.response().toByteArray().getBytes()) : null;
+                    obj.addProperty("response", responseBase64);
+
+                    // Annotations
+                    String highlight = item.annotations() != null && item.annotations().highlightColor() != null
+                            ? item.annotations().highlightColor().toString() : "";
+                    obj.addProperty("highlight", highlight);
+
+                    String comment = item.annotations() != null && item.annotations().notes() != null
+                            ? item.annotations().notes() : "";
+                    obj.addProperty("comment", comment);
+
+                    // HTTP Service
+                    JsonObject serviceObj = new JsonObject();
+                    HttpService httpService = item.httpService();
+                    serviceObj.addProperty("host", httpService != null && httpService.host() != null ? httpService.host() : "");
+                    serviceObj.addProperty("port", httpService != null ? httpService.port() : 0);
+                    serviceObj.addProperty("protocol", httpService != null ? (httpService.secure() ? "https" : "http") : "");
+                    obj.add("http_service", serviceObj);
+
+                    maps.add(obj);
+                } catch (Exception e) {
+                    api.logging().logToError("Failed to process one proxy history entry at index " + i + ": " + e.getMessage());
+                }
+                processed++;
             }
+        } catch (Exception e) {
+            api.logging().logToError("Critical error iterating proxy history for prefix '" + urlPrefix + "': " + e.getMessage());
         }
+
         return maps.toString();
+    }
+
+    /**
+     * Backward-compatibility overload (used by PwnService and any old calls).
+     */
+    public String getProxyHistory(String urlPrefix) {
+        return getProxyHistory(urlPrefix, 200, 0);
     }
 
     public void updateProxyHistoryEntry(int id, String notes, String color) {
@@ -130,7 +177,7 @@ public class ProxyService {
             }
 
             ZonedDateTime time_payload_sent = item.time();
-	    obj.addProperty("time_payload_sent", time_payload_sent != null ? time_payload_sent.toString() : "");
+        obj.addProperty("time_payload_sent", time_payload_sent != null ? time_payload_sent.toString() : "");
 
             String payloadBase64 = item.payload() != null
                     ? Base64.getEncoder().encodeToString(item.payload().getBytes())

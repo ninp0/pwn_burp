@@ -43,7 +43,7 @@ public class RestServer {
                 // This is the most common cause of "Idle timeout expired" errors
                 // on long-running endpoints (scans, proxy operations, etc.).
                 // to 3 minutes.
-                long timoutMs = 3 * 60 * 1000L;
+                long timeoutMs = 3 * 60 * 1000L;
 
                 // Async timeout (used by ctx.future(), ctx.async(), etc.)
                 javalinConfig.http.asyncTimeout = timeoutMs;
