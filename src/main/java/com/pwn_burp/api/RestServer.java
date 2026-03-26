@@ -42,9 +42,8 @@ public class RestServer {
                 // Jetty's default idle timeout is only 30 seconds.
                 // This is the most common cause of "Idle timeout expired" errors
                 // on long-running endpoints (scans, proxy operations, etc.).
-                // We extend both the async timeout and the connector idle timeout
-                // to 10 minutes. Adjust the value if you need even longer requests.
-                long timeoutMs = 10 * 60 * 1000L; // 10 minutes
+                // to 3 minutes.
+                long timoutMs = 3 * 60 * 1000L;
 
                 // Async timeout (used by ctx.future(), ctx.async(), etc.)
                 javalinConfig.http.asyncTimeout = timeoutMs;
