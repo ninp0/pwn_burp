@@ -80,6 +80,15 @@ public class PwnService {
         return proxyService.getProxyHistory(urlPrefix);
     }
 
+    /**
+     * NEW: Resilient paginated version of getProxyHistory.
+     * Called by the updated ProxyHandler with ?limit= and ?offset=.
+     * Hard-capped at 500 items (see ProxyService for full details).
+     */
+    public String getProxyHistory(String urlPrefix, int limit, int offset) {
+        return proxyService.getProxyHistory(urlPrefix, limit, offset);
+    }
+
     public String getWebSocketHistory(String urlPrefix) {
         return proxyService.getWebSocketHistory(urlPrefix);
     }
@@ -124,8 +133,21 @@ public class PwnService {
         scopeService.excludeFromScope(url);
     }
 
+    /**
+     * Backward-compatibility overload (used by older handlers or direct calls).
+     * Delegates to the new paginated version with safe defaults.
+     */
     public String getSiteMap(String urlPrefix) {
         return siteMapService.getSiteMap(urlPrefix);
+    }
+
+    /**
+     * NEW: Resilient paginated version of getSiteMap.
+     * Called by the updated SiteMapHandler with ?limit= and ?offset=.
+     * Hard-capped at 500 items (see SiteMapService for full details).
+     */
+    public String getSiteMap(String urlPrefix, int limit, int offset) {
+        return siteMapService.getSiteMap(urlPrefix, limit, offset);
     }
 
     public void addToSiteMap(SiteMapMessage message) {
