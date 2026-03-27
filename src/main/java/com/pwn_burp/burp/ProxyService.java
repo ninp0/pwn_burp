@@ -35,11 +35,8 @@ public class ProxyService {
     }
 
     /**
-     * RESILIENT, PAGINATED getProxyHistory (replaces the old version that caused 500s on large histories).
-     * - Hard-capped at 500 items per call (prevents OOM / HTTP 500s).
-     * - ALWAYS includes full Base64 request + response bodies + timing data + id.
-     * - Supports ?limit= & ?offset= query params.
-     * - Per-item try/catch so one bad entry never crashes the endpoint.
+     * RESILIENT, PAGINATED getProxyHistory — now returns MOST RECENT entries first.
+     * offset=0 → newest 200 items (newest at index 0 of the JSON array).
      */
     public String getProxyHistory(String urlPrefix, int limit, int offset) {
         final int MAX_LIMIT = 500;
@@ -51,17 +48,17 @@ public class ProxyService {
 
         try {
             List<ProxyHttpRequestResponse> history = api.proxy().history();
+            int total = history.size();
 
-            for (int i = 0; i < history.size(); i++) {
+            // Start from the end of the list (newest items)
+            for (int i = total - 1; i >= 0; i--) {
                 ProxyHttpRequestResponse item = history.get(i);
 
-                // Handle offset
                 if (processed < effectiveOffset) {
                     processed++;
                     continue;
                 }
 
-                // Stop once we hit the limit
                 if (maps.size() >= effectiveLimit) {
                     break;
                 }
@@ -76,8 +73,7 @@ public class ProxyService {
 
                 try {
                     JsonObject obj = new JsonObject();
-
-                    obj.addProperty("id", i); // zero-based list index (keeps original behavior)
+                    obj.addProperty("id", i); // keep original index for reference
 
                     // Timing data
                     TimingData td = item.timingData();
@@ -91,7 +87,7 @@ public class ProxyService {
                         obj.addProperty("time_request_sent", "");
                     }
 
-                    // Full request/response bodies (ALWAYS included)
+                    // Full bodies
                     String requestBase64 = item.request() != null
                             ? Base64.getEncoder().encodeToString(item.request().toByteArray().getBytes()) : null;
                     obj.addProperty("request", requestBase64);
@@ -101,11 +97,11 @@ public class ProxyService {
                     obj.addProperty("response", responseBase64);
 
                     // Annotations
-                    String highlight = item.annotations() != null && item.annotations().highlightColor() != null
+                    String highlight = (item.annotations() != null && item.annotations().highlightColor() != null)
                             ? item.annotations().highlightColor().toString() : "";
                     obj.addProperty("highlight", highlight);
 
-                    String comment = item.annotations() != null && item.annotations().notes() != null
+                    String comment = (item.annotations() != null && item.annotations().notes() != null)
                             ? item.annotations().notes() : "";
                     obj.addProperty("comment", comment);
 
@@ -119,24 +115,109 @@ public class ProxyService {
 
                     maps.add(obj);
                 } catch (Exception e) {
-                    api.logging().logToError("Failed to process one proxy history entry at index " + i + ": " + e.getMessage());
+                    api.logging().logToError("Failed to process proxy history entry at index " + i + ": " + e.getMessage());
                 }
                 processed++;
             }
         } catch (Exception e) {
-            api.logging().logToError("Critical error iterating proxy history for prefix '" + urlPrefix + "': " + e.getMessage());
+            api.logging().logToError("Critical error iterating proxy history: " + e.getMessage());
         }
 
         return maps.toString();
     }
 
     /**
-     * Backward-compatibility overload (used by PwnService and any old calls).
+     * Backward-compatibility overload.
      */
     public String getProxyHistory(String urlPrefix) {
         return getProxyHistory(urlPrefix, 200, 0);
     }
 
+    /**
+     * RESILIENT, PAGINATED getWebSocketHistory — now returns MOST RECENT entries first.
+     * offset=0 → newest 200 items (newest at index 0 of the JSON array).
+     */
+    public String getWebSocketHistory(String urlPrefix, int limit, int offset) {
+        final int MAX_LIMIT = 500;
+        int effectiveLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
+        int effectiveOffset = Math.max(0, offset);
+
+        JsonArray maps = new JsonArray();
+        int processed = 0;
+
+        try {
+            List<ProxyWebSocketMessage> wsHistory = api.proxy().webSocketHistory();
+            int total = wsHistory.size();
+
+            // Start from the end of the list (newest items)
+            for (int i = total - 1; i >= 0; i--) {
+                ProxyWebSocketMessage item = wsHistory.get(i);
+
+                if (processed < effectiveOffset) {
+                    processed++;
+                    continue;
+                }
+
+                if (maps.size() >= effectiveLimit) {
+                    break;
+                }
+
+                try {
+                    JsonObject obj = new JsonObject();
+                    obj.addProperty("id", i);
+
+                    obj.addProperty("direction", item.direction() != null ? item.direction().toString() : "");
+
+                    HttpRequest upgradeRequest = item.upgradeRequest();
+                    if (upgradeRequest != null) {
+                        String url = upgradeRequest.url();
+                        obj.addProperty("url", url != null ? url : "");
+                    } else {
+                        obj.addProperty("url", "");
+                    }
+
+                    ZonedDateTime time_payload_sent = item.time();
+                    obj.addProperty("time_payload_sent", time_payload_sent != null ? time_payload_sent.toString() : "");
+
+                    String payloadBase64 = item.payload() != null
+                            ? Base64.getEncoder().encodeToString(item.payload().getBytes()) : null;
+                    obj.addProperty("payload", payloadBase64);
+
+                    int listenerPort = item.listenerPort();
+                    obj.addProperty("listener_port", listenerPort > 0 ? listenerPort : -1);
+
+                    int webSocketId = item.webSocketId();
+                    obj.addProperty("web_socket_id", webSocketId >= 0 ? webSocketId : -1);
+
+                    String highlight = (item.annotations() != null && item.annotations().highlightColor() != null)
+                            ? item.annotations().highlightColor().toString() : "";
+                    obj.addProperty("highlight", highlight);
+
+                    String comment = (item.annotations() != null && item.annotations().notes() != null)
+                            ? item.annotations().notes() : "";
+                    obj.addProperty("comment", comment);
+
+                    maps.add(obj);
+                } catch (Exception e) {
+                    api.logging().logToError("Failed to process WebSocket history entry at index " + i + ": " + e.getMessage());
+                }
+                processed++;
+            }
+        } catch (Exception e) {
+            api.logging().logToError("Critical error iterating WebSocket history: " + e.getMessage());
+        }
+
+        return maps.toString();
+    }
+
+    /**
+     * Backward-compatibility overload.
+     */
+    public String getWebSocketHistory(String urlPrefix) {
+        return getWebSocketHistory(urlPrefix, 200, 0);
+    }
+
+    // === EVERYTHING BELOW THIS LINE IS UNCHANGED FROM YOUR LATEST FILE ===
     public void updateProxyHistoryEntry(int id, String notes, String color) {
         List<ProxyHttpRequestResponse> history = api.proxy().history();
         if (id < 0 || id >= history.size()) {
@@ -156,53 +237,6 @@ public class ProxyService {
         Annotations annotations = entry.annotations();
         annotations.setNotes(notes);
         annotations.setHighlightColor(hl);
-    }
-
-    public String getWebSocketHistory(String urlPrefix) {
-        JsonArray maps = new JsonArray();
-        List<ProxyWebSocketMessage> wsHistory = api.proxy().webSocketHistory();
-        for (int i = 0; i < wsHistory.size(); i++) {
-            ProxyWebSocketMessage item = wsHistory.get(i);
-            JsonObject obj = new JsonObject();
-
-            obj.addProperty("id", i); // zero-based list index
-            obj.addProperty("direction", item.direction() != null ? item.direction().toString() : "");
-
-            HttpRequest upgradeRequest = item.upgradeRequest();
-            if (upgradeRequest != null) {
-                String url = upgradeRequest.url();
-                obj.addProperty("url", url != null ? url : "");
-            } else {
-                obj.addProperty("url", "");
-            }
-
-            ZonedDateTime time_payload_sent = item.time();
-        obj.addProperty("time_payload_sent", time_payload_sent != null ? time_payload_sent.toString() : "");
-
-            String payloadBase64 = item.payload() != null
-                    ? Base64.getEncoder().encodeToString(item.payload().getBytes())
-                    : null;
-            obj.addProperty("payload", payloadBase64);
-
-            int listenerPort = item.listenerPort();
-            obj.addProperty("listener_port", listenerPort > 0 ? listenerPort : -1);
-
-            int webSocketId = item.webSocketId();
-            obj.addProperty("web_socket_id", webSocketId >= 0 ? webSocketId : -1);
-
-            String highlight = (item.annotations() != null && item.annotations().highlightColor() != null)
-                    ? item.annotations().highlightColor().toString()
-                    : "";
-            obj.addProperty("highlight", highlight);
-
-            String comment = (item.annotations() != null && item.annotations().notes() != null)
-                    ? item.annotations().notes()
-                    : "";
-            obj.addProperty("comment", comment);
-
-            maps.add(obj);
-        }
-        return maps.toString();
     }
 
     public void updateWebSocketHistoryEntry(int id, String notes, String color) {

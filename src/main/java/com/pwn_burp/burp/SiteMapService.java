@@ -126,12 +126,8 @@ public class SiteMapService {
     }
 
     /**
-     * RESILIENT, PAGINATED getSiteMap (replaces the old version that caused 500s).
-     * - Hard-capped at 500 items per call (prevents OOM / HTTP 500s on huge sitemaps).
-     * - ALWAYS includes full Base64 request + response bodies (per your requirement).
-     * - Supports ?limit= & ?offset= query params.
-     * - Per-item try/catch + top-level error handling so one bad entry never crashes the endpoint.
-     * - Uses api.logging() for errors (already present in this class).
+     * RESILIENT, PAGINATED getSiteMap — now returns MOST RECENT entries first.
+     * offset=0 → newest 500 items (newest at index 0 of the JSON array).
      */
     public String getSiteMap(String urlPrefix, int limit, int offset) {
         final int MAX_LIMIT = 500;
@@ -142,14 +138,18 @@ public class SiteMapService {
         int processed = 0;
 
         try {
-            for (var item : api.siteMap().requestResponses()) {
-                // Handle offset (skip items)
+            List<HttpRequestResponse> sitemap = api.siteMap().requestResponses();
+            int total = sitemap.size();
+
+            // Iterate from the end (newest first)
+            for (int i = total - 1; i >= 0; i--) {
+                HttpRequestResponse item = sitemap.get(i);
+
                 if (processed < effectiveOffset) {
                     processed++;
                     continue;
                 }
 
-                // Stop once we hit the limit
                 if (maps.size() >= effectiveLimit) {
                     break;
                 }
@@ -166,7 +166,6 @@ public class SiteMapService {
                     maps.add(createSiteMapEntry(item));
                 } catch (Exception e) {
                     api.logging().logToError("Failed to process one sitemap entry: " + e.getMessage());
-                    // One bad/corrupt item won't kill the whole response
                 }
                 processed++;
             }
