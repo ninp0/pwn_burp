@@ -96,33 +96,48 @@ public class SiteMapService {
     }
 
     public void updateSiteMap(SiteMapMessage message) {
-        if (message == null || message.getRequest() == null) {
-            api.logging().logToError("Invalid SiteMapMessage: request is required for update");
-            throw new IllegalArgumentException("SiteMapMessage and request cannot be null for update");
+      if (message == null || message.getRequest() == null) {
+        api.logging().logToError("Invalid SiteMapMessage: request is required for update");
+        throw new IllegalArgumentException("SiteMapMessage and request cannot be null for update");
+      }
+
+      try {
+        // Decode Base64 request
+        byte[] requestBytes = Base64.getDecoder().decode(message.getRequest());
+        ByteArray requestByteArray = ByteArray.byteArray(requestBytes);
+
+        // Find existing entry by matching request bytes
+        Optional<HttpRequestResponse> existingEntryOpt = api.siteMap().requestResponses().stream()
+        .filter(item -> item.request() != null && item.request().toByteArray().equals(requestByteArray))
+        .findFirst();
+
+        if (existingEntryOpt.isPresent()) {
+          HttpRequestResponse existingEntry = existingEntryOpt.get();
+          String notes = message.getComment();
+          HighlightColor hl = HighlightColor.NONE;
+          String color = message.getHighlight();
+          try {
+            hl = HighlightColor.valueOf(color.toUpperCase());
+          } catch (IllegalArgumentException e) {
+            api.logging().logToError("Invalid highlight color: " + color + ". Using NONE.");
+            hl = HighlightColor.NONE;
+          }
+
+          // Update annotations
+          Annotations annotations = existingEntry.annotations();
+          annotations.setNotes(message.getComment());
+          annotations.setHighlightColor(hl);
+        } else {
+          api.logging().logToError("No existing sitemap entry found for the provided request: " + message.getRequest());
+          // throw new RuntimeException("No existing sitemap entry found for the provided request");
         }
-
-        try {
-            // Decode Base64 request
-            byte[] requestBytes = Base64.getDecoder().decode(message.getRequest());
-            ByteArray requestByteArray = ByteArray.byteArray(requestBytes);
-
-            // Find existing entry by matching request bytes
-            Optional<HttpRequestResponse> existingEntryOpt = api.siteMap().requestResponses().stream()
-                    .filter(item -> item.request() != null && java.util.Arrays.equals(item.request().toByteArray().getBytes(), requestByteArray.getBytes()))
-                    .findFirst();
-
-            if (existingEntryOpt.isPresent()) {
-                // TODO: Implement full update logic here (response, annotations, etc.)
-                // For now we keep the original partial logic from the repo
-                api.logging().logToOutput("Updated existing sitemap entry (basic stub)");
-            } else {
-                api.logging().logToError("No matching entry found for update");
-                throw new IllegalArgumentException("No matching sitemap entry found to update");
-            }
-        } catch (Exception e) {
-            api.logging().logToError("Failed to update sitemap entry: " + e.getMessage());
-            throw new RuntimeException("Failed to update sitemap entry", e);
-        }
+      } catch (IllegalArgumentException e) {
+        api.logging().logToError("Failed to decode Base64 or create request/response: " + e.getMessage());
+        throw new RuntimeException("Failed to update sitemap entry", e);
+      } catch (Exception e) {
+        api.logging().logToError("Failed to update sitemap entry: " + e.getMessage());
+throw new RuntimeException("Failed to update sitemap entry", e);
+      }
     }
 
     /**
