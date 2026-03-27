@@ -93,6 +93,15 @@ public class PwnService {
         return proxyService.getWebSocketHistory(urlPrefix);
     }
 
+    /**
+     * NEW: Resilient paginated version of getWebSocketHistory.
+     * Called by the updated ProxyHandler with ?limit= and ?offset=.
+     * Hard-capped at 500 items (see ProxyService for full details).
+     */
+    public String getWebSocketHistory(String urlPrefix, int limit, int offset) {
+        return proxyService.getWebSocketHistory(urlPrefix, limit, offset);
+    }
+
     public void updateProxyHistoryEntry(int id, String notes, String color) {
         proxyService.updateProxyHistoryEntry(id, notes, color);
     }
