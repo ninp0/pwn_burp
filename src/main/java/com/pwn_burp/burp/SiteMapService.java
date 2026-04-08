@@ -144,7 +144,7 @@ throw new RuntimeException("Failed to update sitemap entry", e);
      * RESILIENT, PAGINATED getSiteMap — now returns MOST RECENT entries first.
      * offset=0 → newest 500 items (newest at index 0 of the JSON array).
      */
-    public String getSiteMap(String urlPrefix, int limit, int offset) {
+    public String getSiteMap(String urlPrefix, int limit, int offset, String highlight) {
         final int MAX_LIMIT = 500;
         int effectiveLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
         int effectiveOffset = Math.max(0, offset);
@@ -159,6 +159,14 @@ throw new RuntimeException("Failed to update sitemap entry", e);
             // Iterate from the end (newest first)
             for (int i = total - 1; i >= 0; i--) {
                 HttpRequestResponse item = sitemap.get(i);
+                // If highlight filter is set, skip non-matching entries early
+                if (highlight != null && !highlight.isEmpty() && !highlight.equals("NONE")) {
+                    String itemHighlight = (item.annotations() != null && item.annotations().highlightColor() != null)
+                            ? item.annotations().highlightColor().toString() : "NONE";
+                    if (!itemHighlight.equalsIgnoreCase(highlight)) {
+                        continue;
+                    }
+                }
 
                 if (processed < effectiveOffset) {
                     processed++;
@@ -244,6 +252,6 @@ throw new RuntimeException("Failed to update sitemap entry", e);
      * Returns first 200 items with no prefix filter.
      */
     public String getSiteMap(String urlPrefix) {
-        return getSiteMap(urlPrefix, 200, 0);
+        return getSiteMap(urlPrefix, 200, 0, "NONE");
     }
 }

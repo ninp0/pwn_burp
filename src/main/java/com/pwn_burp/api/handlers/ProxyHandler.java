@@ -50,6 +50,13 @@ public class ProxyHandler {
                 required = false,
                 type = Integer.class,
                 example = "0"
+            ),
+            @OpenApiParam(
+                name = "highlight",
+                description = "Filter entries by highlight color (e.g. RED, GREEN, BLUE)",
+                required = false,
+                type = String.class,
+                example = "RED"
             )
         },
         responses = {
@@ -81,9 +88,10 @@ public class ProxyHandler {
         String urlPrefix = "";
         int limit  = ctx.queryParamAsClass("limit", Integer.class).getOrDefault(200);
         int offset = ctx.queryParamAsClass("offset", Integer.class).getOrDefault(0);
+        String highlight = ctx.queryParamAsClass("highlight", String.class).getOrDefault("NONE");
 
         ctx.status(200);
-        ctx.json(pwnService.getProxyHistory(urlPrefix, limit, offset));
+        ctx.json(pwnService.getProxyHistory(urlPrefix, limit, offset, highlight));
     }
 
     @OpenApi(
@@ -106,6 +114,13 @@ public class ProxyHandler {
                 required = false,
                 type = Integer.class,
                 example = "0"
+            ),
+            @OpenApiParam(
+                name = "highlight",
+                description = "Filter entries by highlight color (e.g. RED, GREEN, BLUE)",
+                required = false,
+                type = String.class,
+                example = "RED"
             )
         },
         responses = {
@@ -137,9 +152,10 @@ public class ProxyHandler {
         String urlPrefix = new String(Base64.getDecoder().decode(ctx.pathParam("url") != null ? ctx.pathParam("url") : ""));
         int limit  = ctx.queryParamAsClass("limit", Integer.class).getOrDefault(200);
         int offset = ctx.queryParamAsClass("offset", Integer.class).getOrDefault(0);
+        String highlight = ctx.queryParamAsClass("highlight", String.class).getOrDefault("NONE");
 
         ctx.status(200);
-        ctx.json(pwnService.getProxyHistory(urlPrefix, limit, offset));
+        ctx.json(pwnService.getProxyHistory(urlPrefix, limit, offset, highlight));
     }
 
     @OpenApi(
@@ -161,6 +177,13 @@ public class ProxyHandler {
                 required = false,
                 type = Integer.class,
                 example = "0"
+            ),
+            @OpenApiParam(
+                name = "highlight",
+                description = "Filter entries by highlight color (e.g. RED, GREEN, BLUE)",
+                required = false,
+                type = String.class,
+                example = "RED"
             )
         },
         responses = {
@@ -189,9 +212,10 @@ public class ProxyHandler {
         String urlPrefix = "";
         int limit  = ctx.queryParamAsClass("limit", Integer.class).getOrDefault(200);
         int offset = ctx.queryParamAsClass("offset", Integer.class).getOrDefault(0);
+        String highlight = ctx.queryParamAsClass("highlight", String.class).getOrDefault("NONE");
 
         ctx.status(200);
-        ctx.json(pwnService.getWebSocketHistory(urlPrefix, limit, offset));
+        ctx.json(pwnService.getWebSocketHistory(urlPrefix, limit, offset, highlight));
     }
 
     @OpenApi(

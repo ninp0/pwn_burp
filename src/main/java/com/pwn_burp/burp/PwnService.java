@@ -85,8 +85,8 @@ public class PwnService {
      * Called by the updated ProxyHandler with ?limit= and ?offset=.
      * Hard-capped at 500 items (see ProxyService for full details).
      */
-    public String getProxyHistory(String urlPrefix, int limit, int offset) {
-        return proxyService.getProxyHistory(urlPrefix, limit, offset);
+    public String getProxyHistory(String urlPrefix, int limit, int offset, String highlight) {
+        return proxyService.getProxyHistory(urlPrefix, limit, offset, highlight);
     }
 
     public String getWebSocketHistory(String urlPrefix) {
@@ -98,8 +98,8 @@ public class PwnService {
      * Called by the updated ProxyHandler with ?limit= and ?offset=.
      * Hard-capped at 500 items (see ProxyService for full details).
      */
-    public String getWebSocketHistory(String urlPrefix, int limit, int offset) {
-        return proxyService.getWebSocketHistory(urlPrefix, limit, offset);
+    public String getWebSocketHistory(String urlPrefix, int limit, int offset, String highlight) {
+        return proxyService.getWebSocketHistory(urlPrefix, limit, offset, highlight);
     }
 
     public void updateProxyHistoryEntry(int id, String notes, String color) {
@@ -155,8 +155,8 @@ public class PwnService {
      * Called by the updated SiteMapHandler with ?limit= and ?offset=.
      * Hard-capped at 500 items (see SiteMapService for full details).
      */
-    public String getSiteMap(String urlPrefix, int limit, int offset) {
-        return siteMapService.getSiteMap(urlPrefix, limit, offset);
+    public String getSiteMap(String urlPrefix, int limit, int offset, String highlight) {
+        return siteMapService.getSiteMap(urlPrefix, limit, offset, highlight);
     }
 
     public void addToSiteMap(SiteMapMessage message) {
