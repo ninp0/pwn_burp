@@ -38,7 +38,7 @@ public class ProxyService {
      * RESILIENT, PAGINATED getProxyHistory — now returns MOST RECENT entries first.
      * offset=0 → newest 200 items (newest at index 0 of the JSON array).
      */
-    public String getProxyHistory(String urlPrefix, int limit, int offset) {
+    public String getProxyHistory(String urlPrefix, int limit, int offset, String highlight) {
         final int MAX_LIMIT = 500;
         int effectiveLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
         int effectiveOffset = Math.max(0, offset);
@@ -53,6 +53,14 @@ public class ProxyService {
             // Start from the end of the list (newest items)
             for (int i = total - 1; i >= 0; i--) {
                 ProxyHttpRequestResponse item = history.get(i);
+                // If highlight filter is set, skip non-matching entries early
+                if (highlight != null && !highlight.isEmpty() && !highlight.equals("NONE")) {
+                    String itemHighlight = (item.annotations() != null && item.annotations().highlightColor() != null)
+                            ? item.annotations().highlightColor().toString() : "NONE";
+                    if (!highlight.equalsIgnoreCase(itemHighlight)) {
+                        continue;
+                    }
+                }
 
                 if (processed < effectiveOffset) {
                     processed++;
@@ -97,7 +105,7 @@ public class ProxyService {
                     obj.addProperty("response", responseBase64);
 
                     // Annotations
-                    String highlight = (item.annotations() != null && item.annotations().highlightColor() != null)
+                    highlight = (item.annotations() != null && item.annotations().highlightColor() != null)
                             ? item.annotations().highlightColor().toString() : "";
                     obj.addProperty("highlight", highlight);
 
@@ -130,14 +138,14 @@ public class ProxyService {
      * Backward-compatibility overload.
      */
     public String getProxyHistory(String urlPrefix) {
-        return getProxyHistory(urlPrefix, 200, 0);
+        return getProxyHistory(urlPrefix, 200, 0, "NONE");
     }
 
     /**
      * RESILIENT, PAGINATED getWebSocketHistory — now returns MOST RECENT entries first.
      * offset=0 → newest 200 items (newest at index 0 of the JSON array).
      */
-    public String getWebSocketHistory(String urlPrefix, int limit, int offset) {
+    public String getWebSocketHistory(String urlPrefix, int limit, int offset, String highlight) {
         final int MAX_LIMIT = 500;
         int effectiveLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
         int effectiveOffset = Math.max(0, offset);
@@ -152,6 +160,15 @@ public class ProxyService {
             // Start from the end of the list (newest items)
             for (int i = total - 1; i >= 0; i--) {
                 ProxyWebSocketMessage item = wsHistory.get(i);
+
+                // If highlight filter is set, skip non-matching entries early
+                if (highlight != null && !highlight.isEmpty() && !highlight.equals("NONE")) {
+                    String itemHighlight = (item.annotations() != null && item.annotations().highlightColor() != null)
+                            ? item.annotations().highlightColor().toString() : "NONE";
+                    if (!highlight.equalsIgnoreCase(itemHighlight)) {
+                        continue;
+                    }
+                }
 
                 if (processed < effectiveOffset) {
                     processed++;
@@ -189,7 +206,7 @@ public class ProxyService {
                     int webSocketId = item.webSocketId();
                     obj.addProperty("web_socket_id", webSocketId >= 0 ? webSocketId : -1);
 
-                    String highlight = (item.annotations() != null && item.annotations().highlightColor() != null)
+                    highlight = (item.annotations() != null && item.annotations().highlightColor() != null)
                             ? item.annotations().highlightColor().toString() : "";
                     obj.addProperty("highlight", highlight);
 
@@ -214,7 +231,7 @@ public class ProxyService {
      * Backward-compatibility overload.
      */
     public String getWebSocketHistory(String urlPrefix) {
-        return getWebSocketHistory(urlPrefix, 200, 0);
+        return getWebSocketHistory(urlPrefix, 200, 0, "NONE");
     }
 
     // === EVERYTHING BELOW THIS LINE IS UNCHANGED FROM YOUR LATEST FILE ===
